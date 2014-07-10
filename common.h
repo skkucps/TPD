@@ -28,28 +28,28 @@
 #define TPD_PACKET_CARRIER_VEHICLE_TRACE_FLAG 0
 
 /* Flag to determine whether to display the forwarding trace at an intersection for greedy routing */
-#define TPD_GREEDY_ROUTING_INTERSECTION_FORWARDING_TRACE_FLAG 1
+#define TPD_GREEDY_ROUTING_INTERSECTION_FORWARDING_TRACE_FLAG 0
 
 /* Flag to determine whether to display the forwarding trace in a road segment for greedy routing */
 #define TPD_GREEDY_ROUTING_ROAD_SEGMENT_FORWARDING_TRACE_FLAG 0
 
 /* Flag to determine whether to display the forwarding trace at an intersection for source routing */
-#define TPD_SOURCE_ROUTING_INTERSECTION_FORWARDING_TRACE_FLAG 1
+#define TPD_SOURCE_ROUTING_INTERSECTION_FORWARDING_TRACE_FLAG 0
 
 /* Flag to determine whether to display the forwarding trace to the destination vehicle for source routing */
 #define TPD_SOURCE_ROUTING_DESTINATION_VEHICLE_FORWARDING_TRACE_FLAG 0
 
 /* Flag to determine whether to display the forwarding trace in a road segment for source routing */
-#define TPD_SOURCE_ROUTING_ROAD_SEGMENT_FORWARDING_TRACE_FLAG 1
+#define TPD_SOURCE_ROUTING_ROAD_SEGMENT_FORWARDING_TRACE_FLAG 0
 
 /* Flag to determine whether to display the predicted encounter graph */
-#define TPD_DISPLAY_PREDICTED_ENCOUNTER_GRAPH_FLAG 1
+#define TPD_DISPLAY_PREDICTED_ENCOUNTER_GRAPH_FLAG 0
 
 /* Flag to determine whether to display the predicted encounter graph for a packet */
 #define TPD_DISPLAY_PREDICTED_ENCOUNTER_GRAPH_FOR_PACKET_FLAG 0
 
 /* Flag to determine whether to display the predicted encounter graph for an AP */
-#define TPD_DISPLAY_PREDICTED_ENCOUNTER_GRAPH_FOR_AP_FLAG 1
+#define TPD_DISPLAY_PREDICTED_ENCOUNTER_GRAPH_FOR_AP_FLAG 0
 
 /* Flag to determine whether to display the predicted encounter graph for an intersection */
 #define TPD_DISPLAY_PREDICTED_ENCOUNTER_GRAPH_FOR_INTERSECTION_FLAG 0

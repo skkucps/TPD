@@ -1,0 +1,11 @@
+queue.c:3421:  global_packet_queue_t *Q = global_packet->ptr_queue; //pointer to global packet queue
+queue.c:3424:  //if(global_packet->id ==2423)
+queue.c:3425:  //  printf("DestroyGlobalPacketQueueNode(): for debug, global_packet->id\n", global_packet->id);
+vadd.c:3118:    pPacketNode->global_packet->carrier_vnode = next_carrier; //pointer to the next packet carrier vehicle
+vadd.c:3281:    pPacketNode->global_packet->carrier_vnode = following_vehicle; //pointer to the next packet carrier vehicle
+vadd.c:3424:    pPacketNode->global_packet->carrier_vnode = destination_vehicle; //pointer to the destination vehicle
+vadd.c:3521:    pPacketNode->global_packet->carrier_vnode = next_carrier; //pointer to the next packet carrier vehicle
+vadd.c:3627:    pPacketNode->global_packet->carrier_vnode = NULL; //pointer to the next packet carrier vehicle
+vadd.c:3752:        pPacketNode->global_packet->carrier_vnode = next_carrier; //pointer to the destination vehicle
+vadd.c:3801:    pPacketNode->global_packet->carrier_vnode = next_carrier; //pointer to the next packet carrier vehicle
+vadd.c:3892:    pPacketNode->global_packet->carrier_vnode = NULL; //pointer to the next packet carrier vehicle

@@ -1,5 +1,5 @@
 /**
-	File: main.c
+	fILE: main.c
 	Description: This simulation model is for (i) Travel Prediction-based Data Forwarding (TPD) for Vehicle-to-Vehicle Data Delivery, (ii) Trajectory-based Statistical Forwarding (TSF) for Infrastructure-to-Vehicle Data Delivery, and (iii) Trajectory-Based Data Forwarding (TBD) for Vehicle-to-Infrastructure Data Delivery.
 	Update Date: 07/13/2013
 	Maker: Jaehoon (Paul) Jeong, pauljeong@skku.edu
@@ -1090,6 +1090,7 @@ int main(int argc, char** argv)
 	
 #if defined(__DEBUG_INTERACTIVE_MODE__) || defined(__DEBUG_SIMULATION_TIME__)
 	end_time = time(NULL);
+        printf("\n*** Simulation: start_time=%d ***\n", (int)start_time);
 	printf("\n*** Simulation: end_time=%d ***\n", (int)end_time);
 	computation_time = end_time - start_time;
 	printf("*** Simulation: computation_time=%d ***\n\n", (int)computation_time);
@@ -1315,7 +1316,12 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 	packet_queue_node_t packet; //packet for data delivery
 	packet_queue_node_t *pPacket = NULL; //pointer to a packet queue node
 
+	global_packet_queue_node_t global_packet; //global packet to forwarding management of multiple packet copies
 	global_packet_queue_node_t *pGlobalPacket = NULL; //pointer to a global packet queue
+
+#if GLOBAL_PACKET_TRACE_FLAG
+	global_packet_queue_node_t *pTrace_GlobalPacket = NULL; //pointer to a global packet queue
+#endif
 
 	struct_graph_node *ap_graph_node = NULL; //pointer to the graph node corresponding to an Internet access point
 	int ap_id = 0; //Internet access point's ID; note that in this version, we assume that there exists only one AP, however, later we will accommodate the multiple-AP scenario.
@@ -1714,7 +1720,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 	}
 
 	/** initialize statistics variables */
-
+	
 	if(param->simulation_mode == TIME)
 	{
 	    simulation_end_point = param->simulation_time;
@@ -1724,18 +1730,20 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 	    iteration_counter = 0; //number of the iterations of all the client packets
 	    simulation_end_point = param->simulation_iteration_number;
 	}
-	
-	printf("\nSIMULATION STARTED TO %d (TIME MODE)\n",simulation_end_point);
+
+	printf("\nSIMULATION STARTED TO %f (TIME MODE)\n",simulation_end_point);
 
 	/** actual simulation procedure including task scheduling */
 	do
 	{
+		
+		//printf("SIMULATION ITERATION NUMBER is %d\n",iteration_counter);
 		if(param->simulation_mode == TIME)
 		{
 			simulation_current_point = smpl_time();
 			if((simulation_termination_flag == TRUE) || (simulation_current_point >= simulation_end_point))
 			{
-				printf("\nSIMULATION TERMINATED AT %d (TIME MODE)\n",simulation_end_point);
+				printf("\nSIMULATION TERMINATED AT %f (TIME MODE)\n",simulation_end_point);
 				break; // main loop break
 			}
 		}
@@ -1744,16 +1752,18 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 			simulation_current_point = (real) iteration_counter;
 			if((int) simulation_current_point >= (int) simulation_end_point)
 			{
-				printf("\nSIMULATION TERMINATED AT %d (COUNT MODE)\n",simulation_end_point);
+				printf("\nSIMULATION TERMINATED AT %f (COUNT MODE)\n",simulation_end_point);
 				break; // main loop break
 			}
 		}
-		
+		//printf("SIMULATION END is %f and CURRENT is %f\n",simulation_end_point,simulation_current_point);
+		iteration_counter++;
+
 		result = cause((int*)&event, &id);
 		if(result != 0)
 		{
-			printf("\nNo more event!\n\n");
-			break;
+			printf("\nSIMULATION TERMINATED (NO MORE EVENT)\n\n");
+			break; // main loop break
 		}
 
 		/**@for debugging */
@@ -2929,6 +2939,12 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 												__FUNCTION__, __LINE__,
 												forward_count, discard_count);
 									} //end of if-4.2.3.2.1.1
+									else 
+									{
+										printf("TPD find next carrier (%d) at intersection for ap , arrived at(%.2f)\n"
+												,next_carrier->id
+												,next_carrier->arrival_time);
+									}
 								} //end of if-4.2.3.2.1
 							} //end of if-4.2.3.2
 							else if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD) //else if-4.2.3.3 
@@ -3075,8 +3091,13 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 									flag = TPD_Is_There_Next_Carrier_At_Intersection(param, current_time, vehicle, Gr, Gr_size, &next_carrier);
 									if(flag) //if-1.1.1.2.1.1
 									{
+										printf("TPD find next carrier (%d) at intersection, arrived at(%.2f)\n"
+												,next_carrier->id
+												,next_carrier->arrival_time);
+								
 										VADD_Forward_Packet_To_Next_Carrier(param, current_time, vehicle, next_carrier, &packet_delivery_statistics, &discard_count); //vehicle forwards its packet(s) to the next carrier pointed by next_carrier
 									} //end of if-1.1.1.2.1.1
+									
 								} //end of if-1.1.1.2.1
 								else if((param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD) && does_vehicle_convoy_have_packet(vehicle, param)) //if-1.1.1.2.2
 								{
@@ -3314,6 +3335,10 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 										flag = TPD_Is_There_Next_Carrier_On_Road_Segment(param, current_time, vehicle, Gr, Gr_size, &next_carrier);
 										if(flag) //if-2.1.1.1.1.1
 										{
+								    		printf("TPD find next carrier (%d) on road segment, arrived at(%.2f)\n"
+												,next_carrier->id
+												,next_carrier->arrival_time);
+
 											VADD_Forward_Packet_To_Next_Carrier(param, current_time, vehicle, next_carrier, &packet_delivery_statistics, &discard_count); //vehicle forwards its packet(s) to the next carrier pointed by next_carrier
 										} //end of if-2.1.1.1.1.1
 									} //end of if-2.1.1.1.1
@@ -3411,6 +3436,10 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 									flag = TPD_Is_There_Next_Carrier_At_Intersection(param, current_time, vehicle, Gr, Gr_size, &next_carrier);
 									if(flag) //if-2.1.1.2.1.1
 									{
+
+										printf("TPD find next carrier (%d) at intersection, arrived at(%.2f)\n"
+												,next_carrier->id
+												,next_carrier->arrival_time);
 										VADD_Forward_Packet_To_Next_Carrier(param, current_time, vehicle, next_carrier, &packet_delivery_statistics, &discard_count); //vehicle forwards its packet(s) to the next carrier pointed by next_carrier
 									} //end of if-2.1.1.2.1.1
 								} //end of if-2.1.1.2.1
@@ -3644,6 +3673,9 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 										flag = TPD_Is_There_Next_Carrier_On_Road_Segment(param, current_time, vehicle, Gr, Gr_size, &next_carrier);
 										if(flag) //if-4.1.1.1.1.1
 										{
+											printf("TPD find next carrier (%d) on road segment, arrived at(%.2f)\n"
+												,next_carrier->id
+												,next_carrier->arrival_time);
 											VADD_Forward_Packet_To_Next_Carrier(param, current_time, vehicle, next_carrier, &packet_delivery_statistics, &discard_count); //vehicle forwards its packet(s) to the next carrier pointed by next_carrier
 										} //end of if-4.1.1.1.1.1
 									} //end of if-4.1.1.1.1
@@ -4183,12 +4215,29 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 				/* update the packet generation information at AP */
 				pAP->packet_generation_time = current_time;
 
+				/** initialize a global packet and insert it into the global packet queue */
+				memset(&global_packet, '\0', sizeof(global_packet));
+				global_packet.id = global_packet_id++; //set a globally unique packet id to packet's id
+				global_packet.state = AP_PACKET_ARRIVE;
+				global_packet.state_time = current_time;
+				/* enqueue global_packet into global packet queue */
+				pGlobalPacket = (global_packet_queue_node_t*) Enqueue((queue_t*)&GPQ, (queue_node_t*)&global_packet);
+				/* Note that this Enqueue() does not allocate the memory of multicast forwarding table whose entry number will be Gr_size. The allocation will be done in Create_Multicast_Forwarding_Table_For_GlobalPacket() */
+
+#if GLOBAL_PACKET_TRACE_FLAG
+				if(global_packet.id == 14)
+				{
+					printf("[%.2f] run():\n global_packet.id=%d is traced\n", (float)current_time, global_packet.id);
+					pTrace_GlobalPacket = pGlobalPacket;
+				}
+#endif
+
 				/** initialize a packet and insert it into the vehicle's packet queue */
 				memset(&packet, '\0', sizeof(packet));
 				
-				packet.id = global_packet_id++; //set a globally unique packet id to packet's id
+				packet.id = global_packet_id; //set a globally unique packet id to packet's id
 				 
-                                printf("global_packet_id %d\n",global_packet_id);
+				printf("global_packet_id %d\n",global_packet_id);
 
 				//packet.id = new_simulation_node_id++; //set a globally unique id to packet's id
 				packet.state = AP_PACKET_ARRIVE;
@@ -4661,7 +4710,10 @@ Note that for the static forwarding, the path from the AP to the target point in
 
         //@Version 2 for the performance evaluation        
 	packet_delivery_statistics.mean_expected_delivery_delay = packet_delivery_statistics.expected_delivery_delay_sum/packet_delivery_statistics.delivered_packet_number;
-	packet_delivery_statistics.mean_actual_delivery_delay = (packet_delivery_statistics.actual_delivery_delay_sum + packet_delivery_statistics.discarded_packet_number * param->communication_packet_ttl)/(packet_delivery_statistics.delivered_packet_number + packet_delivery_statistics.discarded_packet_number);
+/*	packet_delivery_statistics.mean_actual_delivery_delay = (packet_delivery_statistics.actual_delivery_delay_sum + packet_delivery_statistics.discarded_packet_number * param->communication_packet_ttl
+)/(packet_delivery_statistics.delivered_packet_number + packet_delivery_statistics.discarded_packet_number);*/
+
+	packet_delivery_statistics.mean_actual_delivery_delay = packet_delivery_statistics.actual_delivery_delay_sum /packet_delivery_statistics.delivered_packet_number;
 
         printf("packet_delivery_statistics.actual_delivery_delay_sum = %d\n",(int)packet_delivery_statistics.actual_delivery_delay_sum);
         printf("packet_delivery_statistics.discarded_packet_number = %d\n",packet_delivery_statistics.discarded_packet_number);

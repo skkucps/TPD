@@ -11,9 +11,6 @@
 #include "vadd.h"
 #include "tpd.h" //TPD_Find_GraphNode_In_EncounterGraph()
 
-#define EPIDEMIC_20140520
-//#define EPIDEMIC_20140602
-
 int EPIDEMIC_Perform_Packet_Dissemination_At_Intersection_For_AP(parameter_t *param,
 		double current_time,
 		struct_access_point_t *AP,
@@ -115,20 +112,14 @@ int EPIDEMIC_Perform_Packet_Dissemination_At_Intersection_For_AP(parameter_t *pa
 #if 1 /* [ */
 	if(total_forward_count > 0)
 	{
-
-//#ifdef EPIDEMIC_20140602
-//		printf("Intersection AP(%d) forwards count %d \n",
-//			AP->id, total_forward_count);
-//#else
-//		printf("%s:%d AP(%d) forwards its packet copies with total_forward_count %d\n",
-//				__FUNCTION__, __LINE__,
-//				AP->id, total_forward_count);
-//#endif
+		printf("%s:%d AP(%d) forwards its packet copies with total_forward_count %d\n",
+				__FUNCTION__, __LINE__,
+				AP->id, total_forward_count);
 
 		/* delete the original packets in AP's packet_queue because AP forwarded its packets 
 		 * to the neighboring vehicles.
 		 * Note that this discard of the original packets is not counted as packet loss. */
-		EPIDEMIC_Discard_Original_Packet_In_AP(current_time, AP);
+		EPIDEMIC_Discard_Original_Packet_In_AP(param, current_time, AP);
 	}
 #endif /* ] */
 
@@ -195,7 +186,6 @@ int EPIDEMIC_Perform_Packet_Dissemination_At_Intersection(parameter_t *param,
 
 		if(flag == TRUE && next_carrier != NULL)
 		{
-			//printf("Intersection to vehicle(%d)\n",next_carrier->id);
 			/* forward the copies of the packets carried by vehicle to next_carrier */
 			packet_copy_cluster_number++;
 #if 0 /* [ */
@@ -209,18 +199,18 @@ int EPIDEMIC_Perform_Packet_Dissemination_At_Intersection(parameter_t *param,
 					/* check the validity of convoy queue Q */
 					if(Q == NULL)
 					{
-						//printf("%s:%d the convoy queue of next_vehicle(%d) is NULL",
-						//		__FUNCTION__, __LINE__,
-						//		next_carrier->id);
+						printf("%s:%d the convoy queue of next_vehicle(%d) is NULL",
+								__FUNCTION__, __LINE__,
+								next_carrier->id);
 						exit(1);
 					}
 
 #if 1 /* [ */
 					if(Q->size > 1)
 					{
-						//printf("%s:%d the convoy_size for next_carrier(%d) is %d\n",
-						//		__FUNCTION__, __LINE__,
-						//		next_carrier->id, Q->size);
+						printf("%s:%d the convoy_size for next_carrier(%d) is %d\n",
+								__FUNCTION__, __LINE__,
+								next_carrier->id, Q->size);
 					}
 #endif /* ] */
 
@@ -250,17 +240,9 @@ int EPIDEMIC_Perform_Packet_Dissemination_At_Intersection(parameter_t *param,
 #if 1 /* [ */
 	if(total_forward_count > 0)
 	{
-//#ifdef EPIDEMIC_20140602
-//		printf("Intersection vehicle(%d) forwards count %d pos(%s,%s)\n",	
-//			vehicle->id, 
-//			total_forward_count,
-//			vehicle->current_pos_in_digraph.tail_node,
-//			vehicle->current_pos_in_digraph.head_node);
-//#else
-//		printf("%s:%d vehicle(%d) forwards its packet copies with total_forward_count %d\n",
-//				__FUNCTION__, __LINE__,
-//				vehicle->id, total_forward_count);
-//#endif
+		printf("%s:%d vehicle(%d) forwards its packet copies with total_forward_count %d\n",
+				__FUNCTION__, __LINE__,
+				vehicle->id, total_forward_count);
 	}
 #endif /* ] */
 
@@ -317,21 +299,12 @@ int EPIDEMIC_Forward_Packet_Copy_From_AP_To_Next_Carrier(parameter_t *param, dou
 		{
 			pPacketNode = (packet_queue_node_t*) Dequeue_With_QueueNodePointer((queue_t*)AP->packet_queue, (queue_node_t*)pPacketNode); //dequeue a packet placed at vehicle's packet queue front
 
-			VADD_Discard_Expired_Packet(param, current_time, pPacketNode, VANET_NODE_VEHICLE, (void*)next_carrier, packet_delivery_stat,pPacketNode->ttl); //discard the expired packet by destroying the memory of the packet while the correponding global packet queue node is dequeued and destroyed 
+			VADD_Discard_Expired_Packet(param, current_time, pPacketNode, VANET_NODE_VEHICLE, (void*)next_carrier, packet_delivery_stat); //discard the expired packet by destroying the memory of the packet while the correponding global packet queue node is dequeued and destroyed 
 			(*discard_count)++;
 
 			i--; //decrease index i to check the next queue node because the queue node corresponding to index i is already dequeued and deleted.
 			continue;
 		} //end of if-1.1
-
-#ifdef EPIDEMIC_20140520
-		/* check whether this packet copy is already in the packet queue of next_carrier */
-		flag = IsPacketCopy_In_PacketQueue(next_carrier->packet_queue, pPacketNode);
-		if (flag)
-		{
-			continue;
-		}
-#endif
 
 		/** check packet_depulication_number to limit the number of packet copies in Epidemic Routing */
 		if(pPacketNode->packet_duplication_count > param->communication_packet_hop_limit)
@@ -349,20 +322,11 @@ int EPIDEMIC_Forward_Packet_Copy_From_AP_To_Next_Carrier(parameter_t *param, dou
 			/* increase the number of packet copies for packet traffic statistics */
 			packet_delivery_stat->generated_packet_copy_number++;
 		}
-#ifndef EPIDEMIC_20140520
-		/* check whether this packet copy is already in the packet queue of next_carrier */
-		flag = IsPacketCopy_In_PacketQueue(next_carrier->packet_queue, pPacketNode);
-		if (flag)
-		{
-			continue;
-		}
-#endif
+
 		/* set up packet's fields */
 		pPacketNode->last_receive_time = current_time; //last packet receive time
 		pPacketNode->carry_src_id = AP->id; //AP's id
 		pPacketNode->carry_dst_id = next_carrier->id; //next packet carrier's id
-
-
 
 		/* set up pointers to the carrier vehicle in both the packet queue node and the global packet queue node corresponding to pPacketNode */
 		pPacketNode->carrier_vnode = next_carrier; //pointer to the next packet carrier vehicle
@@ -383,9 +347,25 @@ int EPIDEMIC_Forward_Packet_Copy_From_AP_To_Next_Carrier(parameter_t *param, dou
 		hop_number = (int)ceil(distance/R);
 		pPacketNode->packet_transmission_count += hop_number;
 
-		//Enqueue_With_QueueNodePointer((queue_t*)next_carrier->packet_queue, (queue_node_t*)pPacketNode); //enqueue the packet into next_carrier's packet queue rear
-		pPacketNode = (packet_queue_node_t*) Enqueue((queue_t*)next_carrier->packet_queue, (queue_node_t*)pPacketNode); //enqueue the packet into next_carrier's packet queue rear; NOTE: pPacketNode returned by Enqueue() is the pointer to the newly allocated queue node for next_carrier which is different from pPacketNode tossed to Enqueue() as a parameter.
-		
+		/* check whether this packet copy is already in the packet queue of next_carrier */
+		flag = IsPacketCopy_In_PacketQueue(next_carrier->packet_queue, pPacketNode);
+		if(flag == FALSE)
+		{
+			//Enqueue_With_QueueNodePointer((queue_t*)next_carrier->packet_queue, (queue_node_t*)pPacketNode); //enqueue the packet into next_carrier's packet queue rear
+			pPacketNode = (packet_queue_node_t*) Enqueue((queue_t*)next_carrier->packet_queue, (queue_node_t*)pPacketNode); //enqueue the packet into next_carrier's packet queue rear; NOTE: pPacketNode returned by Enqueue() is the pointer to the newly allocated queue node for next_carrier which is different from pPacketNode tossed to Enqueue() as a parameter.
+		}
+		else
+		{
+#if 0 /* [ */
+			printf("%s:%d packet_copy(%d) of AP(%d) is already in next_carrier(%d)\n",
+					__FUNCTION__, __LINE__,
+					pPacketNode->id,
+					AP->id,
+					next_carrier->id);
+#endif /* ] */
+			continue;
+		}
+
 		forward_count++; //increase packet count
 
 		/* update the latest packet information */
@@ -470,21 +450,12 @@ int EPIDEMIC_Forward_Packet_Copy_To_Next_Carrier(parameter_t *param, double curr
 		{
 			pPacketNode = (packet_queue_node_t*) Dequeue_With_QueueNodePointer((queue_t*)vehicle->packet_queue, (queue_node_t*)pPacketNode); //dequeue a packet placed at vehicle's packet queue front
 
-			VADD_Discard_Expired_Packet(param, current_time, pPacketNode, VANET_NODE_VEHICLE, (void*)next_carrier, packet_delivery_stat,pPacketNode->ttl); //discard the expired packet by destroying the memory of the packet while the correponding global packet queue node is dequeued and destroyed 
+			VADD_Discard_Expired_Packet(param, current_time, pPacketNode, VANET_NODE_VEHICLE, (void*)next_carrier, packet_delivery_stat); //discard the expired packet by destroying the memory of the packet while the correponding global packet queue node is dequeued and destroyed 
 			(*discard_count)++;
 
 			i--; //decrease index i to check the next queue node because the queue node corresponding to index i is already dequeued and deleted.
 			continue;
 		} //end of if-1.1
-
-#ifdef EPIDEMIC_20140520
-		/* check whether this packet copy is already in the packet queue of next_carrier */
-                flag = IsPacketCopy_In_PacketQueue(next_carrier->packet_queue, pPacketNode);
-                if (flag)
-		{
-			continue;
-		}
-#endif
 
 		/** check packet_depulication_number to limit the number of packet copies in Epidemic Routing */
 		if(pPacketNode->packet_duplication_count > param->communication_packet_hop_limit)
@@ -502,21 +473,11 @@ int EPIDEMIC_Forward_Packet_Copy_To_Next_Carrier(parameter_t *param, double curr
 			/* increase the number of packet copies for packet traffic statistics */
 			packet_delivery_stat->generated_packet_copy_number++;
 		}
-#ifndef EPIDEMIC_20140520
-		/* check whether this packet copy is already in the packet queue of next_carrier */
-                flag = IsPacketCopy_In_PacketQueue(next_carrier->packet_queue, pPacketNode);
-                if (flag)
-		{
-			continue;
-		}
-#endif
+
 		/* set up packet's fields */
 		pPacketNode->last_receive_time = current_time; //last packet receive time
 		pPacketNode->carry_src_id = vehicle->id; //current packet carrier's id
 		pPacketNode->carry_dst_id = next_carrier->id; //next packet carrier's id
-
-
-
 
 		/* set up pointers to the carrier vehicle in both the packet queue node and the global packet queue node corresponding to pPacketNode */
 		pPacketNode->carrier_vnode = next_carrier; //pointer to the next packet carrier vehicle
@@ -556,9 +517,24 @@ int EPIDEMIC_Forward_Packet_Copy_To_Next_Carrier(parameter_t *param, double curr
 			}        
 		} //end of if-1
 
-
-		//Enqueue_With_QueueNodePointer((queue_t*)next_carrier->packet_queue, (queue_node_t*)pPacketNode); //enqueue the packet into next_carrier's packet queue rear
-		pPacketNode = (packet_queue_node_t*) Enqueue((queue_t*)next_carrier->packet_queue, (queue_node_t*)pPacketNode); //enqueue the packet into next_carrier's packet queue 
+		/* check whether this packet copy is already in the packet queue of next_carrier */
+		flag = IsPacketCopy_In_PacketQueue(next_carrier->packet_queue, pPacketNode);
+		if(flag == FALSE)
+		{
+			//Enqueue_With_QueueNodePointer((queue_t*)next_carrier->packet_queue, (queue_node_t*)pPacketNode); //enqueue the packet into next_carrier's packet queue rear
+			pPacketNode = (packet_queue_node_t*) Enqueue((queue_t*)next_carrier->packet_queue, (queue_node_t*)pPacketNode); //enqueue the packet into next_carrier's packet queue rear; NOTE: pPacketNode returned by Enqueue() is the pointer to the newly allocated queue node for next_carrier which is different from pPacketNode tossed to Enqueue() as a parameter.
+		}
+		else
+		{
+#if 0 /* [ */
+			printf("%s:%d packet_copy(%d) of vehicle(%d) is already in next_carrier(%d)\n",
+					__FUNCTION__, __LINE__,
+					pPacketNode->id,
+					vehicle->id,
+					next_carrier->id);
+#endif /* ] */
+			continue;
+		}
 
 		forward_count++; //increase packet count
 
@@ -744,18 +720,9 @@ int EPIDEMIC_Perform_Packet_Dissemination_On_Road_Segment(parameter_t *param, do
 #if 1 /* [ */
 	if(total_forward_count > 0)
 	{
-#ifdef EPIDEMIC_20140602
-		printf("time %.2f, vehicle(%d) on road forwards to vehicle(%d) count %d pos(%s,%s)\n",			         current_time,
-			vehicle->id, 
-			next_carrier_1->id,
-			total_forward_count,
-			vehicle->current_pos_in_digraph.enode->tail_node, 
-			vehicle->current_pos_in_digraph.enode->head_node);
-#else
-		//printf("%s:%d vehicle(%d) forwards its packet copies with total_forward_count %d\n",
-		//		__FUNCTION__, __LINE__,
-		//		vehicle->id, total_forward_count);
-#endif
+		printf("%s:%d vehicle(%d) forwards its packet copies with total_forward_count %d\n",
+				__FUNCTION__, __LINE__,
+				vehicle->id, total_forward_count);
 	}
 #endif /* ] */
 
@@ -1543,32 +1510,7 @@ boolean EPIDEMIC_Is_There_Next_Carrier_On_Two_Way_Road_Segment(parameter_t *para
 	return result;
 }
 
-int EPIDEMIC_Discard_Original_Packet_In_AP(double current_time, 
-		struct_access_point_t *AP)
-{ //discard original packets in AP's packet queue by releasing the memory of the packets in the packet queue
+int EPIDEMIC_Discard_Original_Packet_In_AP(param, current_time, AP)
+{
 	int count = 0; //the number of discarded packets
-	packet_queue_node_t *pPacketNode = NULL; //pointer to a packet node
-
-	if(AP == NULL)
-	{
-		printf("%s:%d AP is NULL\n",
-				__FUNCTION__, __LINE__);
-		return 0;
-	}
-	else if(AP->packet_queue == NULL)
-	{
-		printf("%s:%d AP->packet_queue is NULL\n",
-				__FUNCTION__, __LINE__);
-		return 0;
-	}
-	else
-	{
-		count = AP->packet_queue->size;
-	}
-
-    /* empty the queue AP->packet_queue by releasing the memory of the packets */
-    EmptyQueue((queue_t*) AP->packet_queue);
-
-	return count;
 }
-

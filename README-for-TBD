@@ -1,0 +1,37 @@
+README for TBD and VADD
+                                    Maker: Jaehoon Paul Jeong
+									Email: jaehoon.paul@gmail.com
+                                    Date: 7/25/2010
+
+1. Compiling Commands
+ 1.1 Preparation for Compiling
+   - Step 1: You need to install GSL library in your home directory.
+             GSL library can be obtained in the following URL:
+             http://www.gnu.org/software/gsl/
+			 
+   - Step 2: Modify GSL_INCLUDE and GSL_LIBRARY in Makefile 
+             with the directory of GSL library.
+   
+ 1.2 Make the execution file
+  $make
+   -> The execution binary is vanet
+
+ 1.3 Make the debugging binary
+  $make all.db
+   -> The execution binary is vanet.db
+
+2. Run TBD or VADD
+ 2.1 Run TBD simulation
+  $vanet -e 1
+
+ 2.2 Run VADD simulation
+  $vanet -e 2
+ 
+3. Configuration files
+ 3.1 Simulation parameter configuration file
+  This configuration file is ./param-configuration/param-for-upload.conf
+
+ 3.2 Road network graph configuration file
+  This configuration file is ./graph-configuration/graph-node49-for-vanet.conf
+
+Enjoy this simulator!

@@ -1,0 +1,11 @@
+#!/bin/bash -l
+#PBS -l walltime=1:00:00,mem=14gb,nodes=4:ppn=8
+#send mail options
+#PBS -m abe
+
+#cd /home/xe1/jeongjh/VANET/IVANET-v1.6.1
+module load intel
+module load ompi/intel
+
+/usr/bin/time mpirun -np 32 ./submit_task >& run.out
+# end of portable batch system script

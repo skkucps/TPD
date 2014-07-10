@@ -1,0 +1,7 @@
+#!/bin/bash -l
+#PBS -l walltime=5:00:00,mem=2gb,nodes=1:ppn=1
+# send mail options
+#PBS -m abe
+cd /home/bc1/jeongjh/project/surveillance/simulation/VANET/iTBD/iTBD-v2.1.2
+vanet -q 1
+# end of blade portable batch system script

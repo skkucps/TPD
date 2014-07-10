@@ -5522,7 +5522,7 @@ int VADD_Forward_Packet_From_AP_To_Next_Carrier(parameter_t *param, double curre
 
 #if 1 /* [ */
 		/* reset packet generation time to the delivery start time from AP to the next carrier */
-		pPacketNode->generation_time = current_time;	
+		//pPacketNode->generation_time = current_time;	
 #endif /* ] */
 
 		/* compute the packet's lifetime to check whether the packet expires */
@@ -6481,7 +6481,7 @@ void VADD_Forward_Packet_From_Stationary_Node_To_Destination_Vehicle(parameter_t
 
 void VADD_Discard_Expired_Packet(parameter_t *param, double current_time, packet_queue_node_t *pPacketNode, vanet_node_type_t node_type, void *vanet_node, packet_delivery_statistics_t *packet_delivery_stat,int lineNumber)
 { //discard the expired packet by destroying the memory of the packet while the correponding global packet queue node is dequeued and destroyed 
-  
+
   //printf("Packet Discarded %d!\n",lineNumber);
   /* set the last receive time to current time in order to count this discarded packet into the accumulated delay with the packet TTL */
   pPacketNode->last_receive_time = current_time; //last packet receive time  

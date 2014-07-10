@@ -2038,8 +2038,7 @@ encounters destination_vehicle(29->22: 88).
 
 [TPD-v1.8.7: 5/3/2014]
 1. For "vanet -n 200 -j 2", there is no Predicted Encounter for the second packet.
-[21600.00] 
-: EDD Table has been updated!
+[21600.00] VANET_EDD_UPDATE: EDD Table has been updated!
 <D> VADD_Forward_Packet_To_Destination_Vehicle:5344 [22268] current_carrier(157) in (21->14: 449) encounters destination_vehicle(14->21: 1033).
 <D> VADD_Forward_Packet_To_Destination_Vehicle:5387 [22268] current_carrier(157) in (21->14: 449) cannot deliver packet(id=1, lifetime=6791, TTL=3000) to destination_vehicle(14->21: 1033).
 <D> VADD_Forward_Packet_To_Destination_Vehicle:5487 [22268] current_carrier(157) in (21->14: 449) delivers 0 packets among 1 packets in Q to destination_vehicle(14->21: 1033).

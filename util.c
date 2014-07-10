@@ -272,7 +272,8 @@ real delay_func(struct parameter *param, int type, ...)
 	}; //end of switch-1
 	
 	va_end(ap); /* cleanup */
-
+        
+	if (result < 0.0) result = 0.0;
 	return result;
 }
 
@@ -1082,7 +1083,8 @@ int log_vanet(VANET_LOG_TYPE type, double current_time, packet_queue_node_t *p, 
 
 	  /* update packet delivery statistics */
 	  packet_delivery_stat->delivered_packet_number++;
-	  printf("########### arrived at %lld\n",p->destination_arrival_time);
+          // Taehwan 20140610
+	  //printf("########### arrived at AP on %lld\n",p->destination_arrival_time);
 	  packet_delivery_stat->expected_delivery_delay_sum += p->expected_delivery_delay;
 	  packet_delivery_stat->actual_delivery_delay_sum += p->actual_delivery_delay;
 	  packet_delivery_stat->ap_arrival_delay_sum += p->actual_delivery_delay;
@@ -1139,6 +1141,9 @@ int log_vanet(VANET_LOG_TYPE type, double current_time, packet_queue_node_t *p, 
 
 	  /* update packet delivery statistics */
 	  packet_delivery_stat->delivered_packet_number++;
+          // Taehwan 20140610
+	  //printf("########### arrived at VEHICLE on %ld\n",p->destination_arrival_time);
+      //    printf("########### delivery delay is %ld\n",p->expected_delivery_delay);
 	  packet_delivery_stat->expected_delivery_delay_sum += p->expected_delivery_delay;
 	  packet_delivery_stat->actual_delivery_delay_sum += p->actual_delivery_delay;
           packet_delivery_stat->destination_vehicle_arrival_delay_sum += p->actual_delivery_delay;

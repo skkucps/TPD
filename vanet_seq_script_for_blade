@@ -1,0 +1,8 @@
+#!/bin/bash -l
+#PBS -l walltime=1:00:00,mem=2gb,nodes=1:ppn=1
+# send mail options
+#PBS -m abe
+
+#cd /home/bc1/jeongjh/VANET/IVANET-v1.6.1
+./submit_task
+# end of portable batch system script

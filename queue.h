@@ -53,7 +53,9 @@ typedef enum _queue_type_t {
 	QTYPE_NEIGHBOR_LIST = 34, //neighbor list queue of the head vertices for a tail vertex in adjacency list
 	QTYPE_PARENT_LIST = 35, //parent list queue of the parent vertices in adjacency list
 	QTYPE_ADJACENCY_LIST = 36, //adjacency list queue
-	QTYPE_ADJACENCY_LIST_POINTER = 37 //adjacency list pointer queue that contains the pointers to adjacency queue nodes in the adjacency list queue
+	QTYPE_ADJACENCY_LIST_POINTER = 37, //adjacency list pointer queue that contains the pointers to adjacency queue nodes in the adjacency list queue
+	QTYPE_PACKET_POINTER = 38  //packet pointer queue that contains the pointers to packet copies distributed to multiple VANET objects, such as APs, stationary nodes and vehicles
+
 } queue_type_t;
 
 typedef enum _cluster_type_t {
@@ -404,6 +406,34 @@ typedef struct _packet_queue_node_t {
         double target_point_recomputation_time; /* the time instant to recompute a new target point during the packet delivery in simulation time */
 } packet_queue_node_t;
 
+/** structure for packet pointer queue node */
+typedef struct _packet_pointer_queue_node_t {
+		struct _packet_pointer_queue_node_t *next;
+		struct _packet_pointer_queue_node_t *prev;
+		int id; //packet id
+		int packet_copy_id; //packet copy id
+		packet_queue_node_t *packet; //pointer to the packet
+		struct _global_packet_queue_node_t *global_packet; //pointer to the global packet
+		boolean target_point_arrival_flag; //flag to indicate that the packet was delivered to a target point
+		double target_point_arrival_time; //time when this packet arrived at the target point
+		boolean packet_discard_flag; //flag to indicate that a packet copy was discarded
+		double packet_discard_time; //time when this packet was discarded
+
+		boolean packet_transmission_count_flag; //flag to indicate that a packet copy was counted for its transmission number for the global packet
+		double packet_transmission_count_time; //time when this packet was counted
+
+		int order; //order in the queue
+struct _packet_pointer_queue_t *ptr_queue; //pointer to the queue 
+} packet_pointer_queue_node_t;
+
+/** structure for packet pointer queue */
+typedef struct _packet_pointer_queue_t {
+		queue_type_t type; //queue type
+		int size;
+		packet_pointer_queue_node_t head;
+		int packet_discard_count; //count to determine when to delete the corresponding global packet in the global packet queue
+} packet_pointer_queue_t;
+
 /** structure for packet schedule queue node */
 typedef struct _packet_schedule_queue_node_t {
         struct _packet_schedule_queue_node_t *next;
@@ -421,6 +451,8 @@ typedef struct _global_packet_queue_node_t {
         int id; /* packet id used by SMPL scheduler */
 		STATE state; /* packet state */
         double state_time; /* current time for packet state */
+
+		packet_pointer_queue_t packet_pointer_list; /* the list of the pointers of packet copies held by the packet queues carried by vehicles in Epidemic routing or flooding */
 
         packet_queue_node_t *packet; /* pointer to packet queue node */
         struct_vehicle_t *carrier_vnode; /* pointer to packet carrier vehicle */

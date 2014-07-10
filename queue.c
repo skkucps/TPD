@@ -15,6 +15,7 @@
 #include "all-pairs-shortest-paths.h" //Floyd_Warshall_Allocate_Matrices_For_EDD()
 #include "tpd.h" //TPD_Allocate_Predicted_Encounter_Graph_For_Packet()
 
+/** Note3: whenever we support another queue type, we need to add another case statement for it */
 void InitQueue(queue_t *Q, queue_type_t queue_type)
 { //initialize queue Q
 	assert_memory(Q);
@@ -165,6 +166,10 @@ void InitQueue(queue_t *Q, queue_type_t queue_type)
 
 	case QTYPE_ADJACENCY_LIST_POINTER:
 		memset(Q, 0, sizeof(adjacency_list_pointer_queue_t));
+		break;
+
+	case QTYPE_PACKET_POINTER: 
+		memset(Q, 0, sizeof(packet_pointer_queue_t));
 		break;
 
 	default:
@@ -400,6 +405,12 @@ queue_node_t* MakeQueueNode(queue_type_t queue_type, queue_node_t *node)
 		memcpy(p, node, sizeof(adjacency_list_pointer_queue_node_t));
 	    break;
 
+	case QTYPE_PACKET_POINTER:
+		p = (queue_node_t*) calloc(1, sizeof(packet_pointer_queue_node_t));
+		assert_memory(p);
+		memcpy(p, node, sizeof(packet_pointer_queue_node_t));
+		break;
+
 	default:
 		printf("%s:%d: unknown queue type(%d)\n",
 				__FUNCTION__, __LINE__, queue_type);
@@ -585,6 +596,11 @@ queue_node_t* Enqueue(queue_t *Q, queue_node_t *node)
 		((adjacency_list_pointer_queue_node_t*)p)->order = Q->size - 1;
 		break;
 
+	case QTYPE_PACKET_POINTER:
+		((packet_pointer_queue_node_t*)p)->ptr_queue = (packet_pointer_queue_t*)Q;
+		((packet_pointer_queue_node_t*)p)->order =  Q->size - 1;
+		break;
+
 	default:
 		break;
 	}
@@ -743,6 +759,11 @@ queue_node_t* Enqueue_With_QueueNodePointer(queue_t *Q, queue_node_t *p)
 	case QTYPE_ADJACENCY_LIST_POINTER:
 		((adjacency_list_pointer_queue_node_t*)p)->ptr_queue = (adjacency_list_pointer_queue_t*)Q;
 		((adjacency_list_pointer_queue_node_t*)p)->order = Q->size - 1;
+		break;
+
+	case QTYPE_PACKET_POINTER:
+		((packet_pointer_queue_node_t*)p)->ptr_queue = (packet_pointer_queue_t*)Q;
+		((packet_pointer_queue_node_t*)p)->order =  Q->size - 1;
 		break;
 
 	default:
@@ -1169,6 +1190,14 @@ void DestroyQueueNode(queue_type_t type, queue_node_t *q)
 	case QTYPE_ADJACENCY_LIST: //delete the relate neighbor list queue
 		DestroyQueue((queue_t*) &(((adjacency_list_queue_node_t*)q)->neighbor_list)); //delete neighbor list queue
 		DestroyQueue((queue_t*) &(((adjacency_list_queue_node_t*)q)->parent_list)); //delete parent list queue
+		break;
+
+	case QTYPE_GLOBAL_PACKET: //delete the packet pointer queue
+		DestroyQueue((queue_t*)&((global_packet_queue_node_t*)q)->packet_pointer_list);
+		//delete packet_pointer_list 
+		break;
+
+	default:
 		break;
 	} //end of switch
 
