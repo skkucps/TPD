@@ -1,0 +1,151 @@
+To-do list for TBDF 
+                                                         Jaehoon Paul Jeong
+                                                         Date: 02/24/2009
+							 Update: 07/21/2009
+
+[02/24/2009]
+1. upgrade the communication for the data forwarding at intersection
+such that the communication range is circle rather than square.
+
+2. accommodate any kind of road network graphs rather as well as the grid-style road network graph.
+ - The computation of the angle from vehicle towards AP or the distance from vehicle to AP can be performed
+  in the any kind of road network graphs.
+ - The distance is substituted for the angle in the selection order for the preferred data forwarding edges.
+
+[03/04/2009]
+1. For the directional edge with no vehicle arrival, the edge's mean link delay is the edge's length divided by mean vehicle speed and the link delay standard deviation is zero.
+
+[03/05/2009]
+1. Verify the correctness of the simulation using the linear network configuration.
+ - In the high density road network, the delivery delay should be close to zero.
+
+2. Modify the computation of EDD
+ - Regard the infinite edge (i.e., no edge) with no or a few arrivals of vehicles.
+ - Use the shortest path in terms of the aggregated delivery delay to order the edges for 
+   computing the forwarding probability.
+ - This modified version is used for TBD, so the previous version is used for VADD.
+   . I need to make another function for TBD using (i) the delivery-delay shortest path and 
+     (ii) the geographically shortest path.
+
+3. Vehicular traffic generation
+ - Generate vehicle arrivals per directional edge
+ - When the vehicle arrives at the exit of the directional edge,
+   the vehicle forwards its packets to another vehicle moving 
+   on another directional edge incident to the head of the original edge.
+
+4. Design with Relay nodes
+ - We compute the EDD considering the relay nodes, such as the mean waiting time at relay nodes
+   before the packet can be relayed to the vehicles passing the relay nodes.
+   . Refer to the Mobicom08 paper titled as "Relays, Base Stations, and Meshes: Enhancing Mobile
+     Networks with Infrastructure".
+
+/*************************************************************************************/
+[07/21/2009]
+1. To show the impact of the vehicle speed deviation, we let vehicles changes its speed 
+at intersections on the trajectory.
+
+[07/22/2009]
+1. Is the mean speed the same regardless of the vehicle speed deviation?
+  - Yes, for a normal distribution N(mu,sigma), the mean is mu for any normal distribution.
+ 
+*2. K-anonymous Trajectory-Based Data Forwarding (KTBDF)
+  - For a destination vehicle, AP generates k packets with k independent paths to guarantee k-anonymity.
+    i) How to define independent paths?
+       - Can we use the independence of vectors in linear algebra?
+
+    ii) How to determine the transmission order of k packets?
+       - we can use a random permutation function to mix up the packet order?
+
+3. Vehicle Trajectory Management according to Mobility Type
+ - In v1.0.5, MOBILITY_OPEN is supported, but MOBILITY_CLOSED is not supported yet.
+   . This vehicle trajectory installation is performed at Install_VehicleTrajectory_Into_Packet()
+     in queue.c.
+
+[07/25/2009]
+1. Handling of the expired trajectory packets that the destination vehicle has gone out of its trajectory due to the long delivery time from AP to this carrier vehicle.
+  - The packet chooses a random target point among the intersections on the road network graph 
+  - Then it sets its trajectory selection type as static. 
+  - If this packet meets another vehicle with fresh destination vehicle, it is forwarded with the packet with the fresh destination vehicle trajectory.
+
+[07/30/2009]
+1. TTL setting
+ - the destination vehicle travel time for the trajectory
+   1413 seconds
+ - TTL can be set to the travel time, such as 1413 sec.
+ - However, at this point, TTL is set to 3600 sec for high delivery ratio.
+
+2. Vehicle speed change
+ - each vehicle updates its speed whenever it arrives at a new intersection.
+   . at run() in main.c, we use set_vehicle_speed().
+
+3. New Dynamic Target Point Selection
+ - When at the EAD_p the packet does not arrive the target point p, the packet should select a new target point since the destination vehicle has already passed the target point p with high probability.
+
+ - When the packet arrives at target point earlier than the destination vehicle, the packet should select a new target point towards the destination vehicle since the destination has not arrived at target point p yet.
+
+ -* Update the function of VADD_Update_Vehicle_EDD_And_EDD_SD_For_Download() in vadd.c for Dynamic target point update
+
+4. Dynamic target point selection makes a routing loop:
+ - Command: $vanet -S 3 -j 1 -u 15000 -s 3
+
+[08/03/09-v1.1.8]
+1. We need to draw the system behavior of three target point selection methods in terms of average delivery delay and delivery ratio.
+
+[09/29/09-v1.3.1]
+1. Computation of the EDD_VAR at intersection
+ - at VADD_Compute_EDD_And_EDD_SD_For_TargetPoint_At_Intersection() in vadd.c 
+ - Change
+   . OLD:
+     EDD_VAR += directional_edge_EDD_VAR * forwarding_probability;
+
+   . NEW:
+     EDD_VAR += directional_edge_EDD_VAR * pow(forwarding_probability, 2);
+
+[10/06/09-v1.3.3]
+1. Link Delay Discrepancy between Simulation and Math Model in TBD
+ - The reason is that we use a static node to generate packets on road segment.
+   When there is no vehicle to deliver the generated packets, the packets are waiting for 
+   a carrier to come to the tail of the edge.
+   So we need to consider this waiting like in TBDF link delay model.
+
+ - Or we can let the packet carrier arrive with one packet without a static node 
+   at the tail of the edge.
+   In this case, we can ignore the waiting time because the packet carrier will carry its packet
+   when there is no predecessor vehicle.
+
+[10/10/09-v1.3.6]
+1. Construction of convoy
+ - The EDD of a vehicle is set to the link delay to the head of the edge.
+ - This setting lets the vehicle with the greatest offset among the connected network component in
+the one-way road segment be the convoy header and leader.
+ - Or the EDD of a vehicle is set to the EDD from its current position to the target point.
+
+[10/29/09-v1.4.4]
+1. With a random waiting time (uniform distribution with the interval (0,5) seconds) at each intersection, the EDD estimation accurary is a little lower than no-waiting-time case.
+ - During the protocol development, I will use no-waiting-time setting and use waiting-time setting later.
+
+2. Effect of Reliable Delivery to TCP in STBD
+ - If the packet delivery ratio is high, i.e., with highly reliable delivery,
+it can reduce the retransmission of segments in TCP layer due to packet loss or duplicate ACKs.
+
+3. Optimization for Target Point
+ - Let EPD be expected packet delay and EVD be expected vehicle delay.
+ - Optimization Formula 1
+   i* <- arg min EVD 
+       i \in Dst_Vehicle_Trajectory
+   subject to EVD - EPD >= beta
+  
+   Let SPD be the standard deviation of packet delay.
+   Let SVD be the standard deviation of vehicle delay.
+   The condition that the packet will arrive at the intersection i earlier than the vehicle is "EPD + c*SPD <= EVD - c*SVD" where c is a coefficient (e.g., 3).
+   Thus, EVD - EPD >= c*SVD + c*SPD = beta.
+   (Note that Tian's opinion is that this optimization also assumes the Gaussian distributions of PD and VD. For other distributions, c can be 3.)
+
+ - Optimization Formula 2
+   i* <- arg min EVD 
+       i \in Dst_Vehicle_Trajectory
+   subject to P(PD > VD) <= epsilon
+   
+   "P(PD > VD) <= epsilon" is that the probability that Packet arrives at intersection i later than Vehicle is epsilon (e.g., 0.1).
+
+     

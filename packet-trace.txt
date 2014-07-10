@@ -1,0 +1,52 @@
+
+*** Simulation: start_time=1236727824 ***
+[3600.00] VANET_EDD_UPDATE: EDD Table has been updated!
+
+packet in VADD_Forward_Packet_To_Next_Carrier(): at time=3602.0, src_vid=1, carry_src_vid(vid=1), carry_src_vid_EDD=0.1, carry_dst_vid(vid=3719), carry_dst_vid_EDD=0.1, seq=1, lifetime=1.0, carry_src_vid's position [eid=1 <1,2>, offset=0.0], carry_dst_vid's position [eid=1 <1,2>, offset=0.0]
+
+packet in VADD_Forward_Packet_To_Next_Carrier(): at time=3602.6, src_vid=1, carry_src_vid(vid=3719), carry_src_vid_EDD=0.1, carry_dst_vid(vid=3655), carry_dst_vid_EDD=0.1, seq=1, lifetime=1.6, carry_src_vid's position [eid=1 <1,2>, offset=15.9], carry_dst_vid's position [eid=1 <1,2>, offset=934.5]
+
+packet in VADD_Forward_Packet_To_Next_Carrier(): at time=3602.8, src_vid=1, carry_src_vid(vid=3655), carry_src_vid_EDD=0.1, carry_dst_vid(vid=3593), carry_dst_vid_EDD=0.0, seq=1, lifetime=1.8, carry_src_vid's position [eid=1 <1,2>, offset=934.5], carry_dst_vid's position [eid=3 <2,3>, offset=979.9]
+
+packet in VADD_Forward_Packet_To_Next_Carrier(): at time=3602.9, src_vid=1, carry_src_vid(vid=3593), carry_src_vid_EDD=0.0, carry_dst_vid(vid=3539), carry_dst_vid_EDD=0.0, seq=1, lifetime=1.9, carry_src_vid's position [eid=3 <2,3>, offset=979.9], carry_dst_vid's position [eid=5 <3,4>, offset=985.8]
+
+packet in VADD_Forward_Packet_To_Next_Carrier(): at time=3603.0, src_vid=1, carry_src_vid(vid=3539), carry_src_vid_EDD=0.0, carry_dst_vid(vid=3429), carry_dst_vid_EDD=0.0, seq=1, lifetime=2.0, carry_src_vid's position [eid=5 <3,4>, offset=985.8], carry_dst_vid's position [eid=7 <4,5>, offset=993.0]
+
+type=1, current_time=3603.06, src_vid=1, carry_src_vid=3429, carry_dst_vid=3429, p->target_dst_ap_id=5, p->actual_dst_ap_id=5, seq=1, generation_time=3601.00, last_receive_time=3603.06, expected_delivery_delay=0.07, actual_delivery_delay=2.06, expected_delivery_delay_standard_deviation=0.03, delivery_delay_difference=1.99, ttl=50000.00, size=50
+
+[7200.00] VANET_EDD_UPDATE: EDD Table has been updated!
+
+/*** simulation results ***/
+seed=1
+graph_node_number (option -k)=5
+graph_file_name=./graph-configuration/graph-node5-for-ivanet.conf
+vehicle_vanet_vehicular_traffic_model (option -m)=2
+vehicle_vanet_acl_measurement_flag (option -h)=0
+vehicle_vanet_edd_and_link_model (option -l)=0
+vehicle_vanet_edd_model (option -e)=2
+vehicle_vanet_tbd_edd_computation_type (option -c)=2
+vehicle_vanet_edge_delay_model (option -d)=1
+vehicle_vanet_intersection_forwarding_type (option -f)=2
+vehicle_maximum_number (option -n)=100
+vehicle_packet_generating_entity_number (option -g)=1
+vehicle_vanet_stationary_vehicle_flag (option -o)=1
+vehicle_interarrival_time (option -z)=1.0
+vehicle_speed_distribution (option -q)=3 where EQUAL=1, UNIFORM=2, and NORMAL=3
+communication_range (option -r)=200.0
+communication_packet_ttl (option -t)=50000.0
+communication_packet_maximum_number (option -j)=1
+generated_packet_number=1
+delivered_packet_number=1
+discarded_packet_number=0
+packet_delivery_ratio=1.000000
+mean_expected_delivery_delay=0.069922
+mean_actual_delivery_delay=2.055313
+ratio_of_two_delivery_delays=0.034020
+mean_expected_delivery_delay_standard_deviation=0.034982
+
+### performance result after simulation ###
+100.00	1	0	0.07	2.06	0.03	1.00	1.99	0.03
+
+*** Simulation: end_time=1236727837 ***
+*** Simulation: computation_time=13 ***
+

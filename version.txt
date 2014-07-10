@@ -1,0 +1,2070 @@
+TPD: Travel Prediction-based Data Forwarding for Vehicle-to-Vehicle Data Delivery 
+
+                                                           Create: August 14, 2008,
+													        Update: March 24, 2014,
+                                                                Jaehoon Paul Jeong,
+                                                                pauljeong@skku.edu
+
+Description:
+This implements the simulation for the VANET in a road network.
+
+[v1.0.9-2008-8-14]
+1. This version has implemented the Gaussian Elimination and Backward 
+   Substitution for solving linear systems.
+  - These functions work well to give good answers for three tests.
+
+2. This version has implemented the computation of Expected Delivery Delay (EDD).
+  - The results of EDD are not correct.
+  - We need to set up edge delays appropriately before running the Gaussian 
+    Elimination.
+
+[v1.0.9-2008-8-16]
+1. This version can compute the EDDs correctly.
+
+2. One problem is that the edge with less CP is selected earlier than one with greater CP 
+ in the case where two edges have the theta.
+ *- I need to sort the edges according to the thetas as primary key and the CPs as secondary key.
+
+[v1.2.4-2008-9-3]
+1. There exists some problem in managing the vehicle_movement_list in the directional edge.
+  - When there is one entry in the vehicle_movement_list, the vehicle->id is different from
+  the entry's vid in VADD_Is_There_Next_Carrier_On_Road_Segment() in vadd.c.
+
+[v1.3.6-2008-9-25]
+1. This version has completed the implementation of Simple TBD and Convoy-aware TBD.
+  - Convoy-aware TBD has less packet loss than Simple TBD and VADD.
+  - Simple TBD also has less packet loss than VADD.
+  - Convoy-based link model let these three approaches have better performance than VADD link model.
+
+2. The next step is to build EDD per each directional edge using Shortest Path algorithm rather than Stochastic model. 
+  - In TBD, the vehicle's EDD is computed using stochastic model.
+
+[v1.3.7-2008-9-30]
+1. This version has completed the construction of convoys just after the building of EDDs.
+  - In this version, the vehicle movement list is sorted whenever a vehicle moves.
+
+[v1.3.8-2008-9-30]
+1. We need to check whether the function of VADD_Compute_TBD_Based_EDD_On_Next_Road_Segment()
+is implemented correctly or not
+
+[v1.3.9-2008-10-1]
+1. This version invents a new method to compute the vehicle EDD using the combination of 
+the per-vehicle EDD based on TBD and the per-intersection EDD based on VADD in VADD_Update_Vehicle_EDD() in vadd.c.
+  
+ ... 
+  case VANET_EDD_HYBRID_MODEL: 
+
+    /** EDD is computed by a weighted linear combination of Per-vehicle EDD and Per-intersection EDD; note that the weights of two EDDs for the linear combination are adjusted by the density of vehicular traffic in the given road network */
+
+    /* compute the Per-vehicle EDD */
+    per_vehicle_EDD = VADD_Compute_TBD_Based_EDD(param, vehicle, G, G_size, ap_table);
+
+    /* compute the Per-intersection EDD */
+    per_intersection_EDD = VADD_Compute_VADD_Based_EDD(param, vehicle, G, G_size, ap_table);
+
+    /* combine per_vehicle_EDD and per_intersection_EDD into a linear combination */
+    vehicle->EDD = MIN(per_vehicle_EDD, per_intersection_EDD); 
+    //vehicle->EDD = alpha*per_vehicle_EDD + (1-alpha)*per_intersection_EDD; //alpha is a function of vehicular traffic density
+
+ - The intuition is that the vehicle passing one of access points has smaller per-vehicle EDD than per-intersection EDD. This indicates that this vehicle is a good candidate for packet carry.
+  Otherwise, (i.e., not passing one of the access points) has greater per-vehicle EDD than per-intersection EDD. This indicates that this vehicle needs to forward its packets to another vehicles passing the access point.
+
+[v1.4.0-2008-10-3]
+1. The following line is commented since it is not correct in main.c:
+//vehicle->EDD = next_carrier->EDD; //@Note: commented by Paul on 10/3/08 since this line seems not needed
+
+[v1.4.1-2008-10-4]
+1. I implemented the data forwarding at intersection considering both the outgoing edges and incoming edges for the intersection.
+
+[v1.4.3-2008-10-7]
+1. A vehicle with vid=1 as stationary vehicle can send packets to AP without moving along with its predefined trajectory.
+
+[v1.4.6-2008-10-15]
+1. This version is fixed to let the TBD-convoy scheme work in the performance similar to the VADD.
+
+[v1.4.9-2008-10-16]
+1. Due to the discrepancy of the movement update time, we need to consider the margin of the distance between two adjacent vehicles
+ in order to check whether two adjacent vehicles are within the communication range with each other.  
+   - For example, at Find_Following_Vehicle_Within_Communication_Range_On_Directional_Edge() in queue.c, I use the margin of distance
+     to check the connectivity of two adjacent vehicles.
+
+[*]- I need to update the connectivity checking in other places.
+
+2. I update the TBD-EDD computation using partial path as follows:
+   - at VADD_Compute_TBD_Based_EDD(), 
+     ...
+      /* set the pointer to tail node of the outgoing edge at the intersection corresponding to intermediate intersection, pointed by pEdgeNode->tail_gnode->vertex */
+      pTailNode = pEdgeNode->tail_gnode;
+
+      /* check the computation type of trajectory-based EDD */
+      if(param->vehicle_vanet_tbd_edd_computation_type == VANET_EDD_BASED_ON_TBD_WITH_PARTIAL_PATH) //if edd computation type is partial-path and the tail node is one of APs, then finish the EDD computation here
+      {
+        /* check whether pTailNode->vertex is one of APs; if so, escape from this for-loop since the EDD at access point must be zero */
+
+        flag = IsVertexInTrafficTable(ap_table, pTailNode->vertex);
+
+	/*@ commented on 10/17/08: the previous one */
+/*         /\* check whether pHeadNode->vertex is one of APs; if so, escape from this for-loop since the EDD at access point must be zero *\/ */
+
+/*         flag = IsVertexInTrafficTable(ap_table, pHeadNode->vertex); */
+
+        if(flag)
+	  break;
+      }
+...
+
+[v1.5.0-2008-10-18]
+1. This version let the ACL measurement time from the time when the first vehicle arrives at the directional edge's head to the time when the last update of ACL area is performed.
+
+2. Graph configuration files are modified to let the sources and destinations are all or parts of intersections on the perimeter on the road network. Also, the location of AP is around the center of the road network.
+
+3. Next implementations
+  - Support of variable vehicle speed
+  - Support of multiple access points
+  - Enhancement of intersection forwarding considering the communication circle
+
+[v1.5.1-2008-10-18]
+1. Next implementations
+  - Enhancement of TBD EDD to let the EDD be close to the actual average delivery delay
+  - Support of variable vehicle speed
+  - Support of multiple access points
+  - Enhancement of intersection forwarding considering the communication circle
+
+2. I modifed TBD EDD computation considering the processing at the destination in the case where the vehicle cannot forward the packets to other vehicles.
+
+[v1.5.2-2008-10-20]
+1. This version supports variable vehicle speed such as Normal distributed speed.
+  - The convoy operations for supporting variable speed are being modified.
+
+
+[v1.5.4-2008-10-23]
+1. Some memory leak seems to happen during performing convoy_update() including convoy_merge() and convoy_split() since convoy->vehicle_list.head cannot be updated.
+  - I need to check the code of convoy_update(), convoy_merge() and convoy_split().
+
+[v1.5.5-2008-10-24]
+1. I fixed the memory problem through the update of convoy_update(), convoy_merge() and convoy_split().
+2. In this version, the variable vehicle speed is supported.
+
+3. Bug is found:
+[jeongjh@blade286:IVANET-v1.5.5] vanet -e 1 -k 36 -q 3 -t 10000 -o 0 -g 10 -u 36000 -n 500
+ 
+*** Simulation: start_time=1224856134 ***
+[3600.00] VANET_EDD_UPDATE: EDD Table has been updated!
+convoy_split(): Error: vehicle(id=359) does not exist in the convoy(cid=209)
+...
+[jeongjh@blade286:IVANET-v1.5.5] vanet -e 2 -k 36 -q 3 -t 10000 -o 0 -g 10 -u 36000 -n 500
+ 
+*** Simulation: start_time=1224856141 ***
+[3600.00] VANET_EDD_UPDATE: EDD Table has been updated!
+convoy_split(): Error: vehicle(id=359) does not exist in the convoy(cid=209)
+
+[v1.5.6-2008-10-24]
+1. I fixed the bug in the previous version by fixing the following at convoy_update() in util.c:
+
+ - OLD:
+      else if(d_left > r && d_right > r) //else-if-3.4
+    {
+      if(left_cid == vehicle_cid && vehicle_cid == right_cid) //if-3.4.1
+      {
+	/* split right_convoy into vehicle_convoy and right_convoy */
+	convoy_split(param, update_time, right_convoy, vehicle);
+
+	/* split vehicle_convoy into left_convoy and vehicle_convoy */
+	convoy_split(param, update_time, vehicle_convoy, left);
+      } //end of if-3.4.1
+
+ - NEW:
+    else if(d_left > r && d_right > r) //else-if-3.4
+    {
+      if(left_cid == vehicle_cid && vehicle_cid == right_cid) //if-3.4.1
+      {
+	/* split right_convoy into vehicle_convoy and right_convoy */
+	convoy_split(param, update_time, right_convoy, vehicle);
+
+	/* split vehicle_convoy into left_convoy and vehicle_convoy */
+        vehicle_convoy = vehicle->ptr_convoy_queue_node; //update vehicle_convoy due to the split of right_convoy
+
+	convoy_split(param, update_time, vehicle_convoy, left);
+      } //end of if-3.4.1
+
+[v1.5.7-2008-10-27]
+1. I fixed one bug in convoy_merge() to let the convoy dst_convoy merged with src_convoy have a new convoy header with the maximum offset.
+
+2. I fixed another bug in VADD_Forward_Packet_To_Next_Carrier() to let the stationay vehicle (vid=1) be able to send its packet to its neighboring vehicle by choosing the next_carrier as the convoy tail rather than the convoy leader.
+ - This is because in some cases, the stationary vehicle is the convoy leader, so it cannot transmit its packets to other vehicles.
+
+[v1.5.8-2008-10-27]
+1. Things to implement
+ (i) Intersection model such that a vehicle can search next carrier when it approaches the intersection with the communication range r.
+ (ii) Support of any arbitrary road network that includes a grid-topology road network.
+    - The purpose is to show that the theta-based ordering is not good for an arbitrary road network. We can use the geographical distance between the source and the destination or the accumulated delay based on the shortest path algorithm.
+
+[v1.5.9-2008-10-31]
+1. This version gives an accurate actual delivery delay that is close to the expected delivery delay on one road segment.
+
+2. There was a bug at VADD_Is_There_Next_Carrier_On_Road_Segment() in vadd.c for convoy forwarding mode (i.e., VANET_FORWARDING_BASED_ON_CONVOY).
+ - In the new version, since next_carrier is the convoy leader of the convoy containing the vehicle,
+   the neighbor vehicle within the communication range of the vehicle is selected, and then the neighbor's convoy leader is set to next_carrier. We can set the vehicle's convoy leader directly without the for-loop.
+
+ - OLD: 
+	/** update the pointer of neighbor vehicle node */
+	if((distance <= param->communication_range) && (pMoveNode->vnode->ptr_convoy_queue_node->leader_vehicle->EDD < vehicle->ptr_convoy_queue_node->leader_vehicle->EDD) && (pMoveNode->vnode->ptr_convoy_queue_node->leader_vehicle->EDD < min_neighbor_EDD))
+	{ 
+          /* update min_neighbor's EDD with pMoveNode's convoy leader's EDD */
+          min_neighbor_EDD = pMoveNode->vnode->ptr_convoy_queue_node->leader_vehicle->EDD;
+
+          /* set next_carrier to the vehicle's convoy leader */
+	  *next_carrier = pMoveNode->vnode->ptr_convoy_queue_node->leader_vehicle;
+	  //@ Note: we need to consider the communication delay between the packet source vehicle and the leader
+
+	  return TRUE;
+        }	
+
+- NEW:
+	/** update the pointer of neighbor vehicle node */
+        if(distance <= param->communication_range)
+	{ 
+          /* update min_neighbor's EDD with pMoveNode's convoy leader's EDD */
+          min_neighbor_EDD = pMoveNode->vnode->ptr_convoy_queue_node->leader_vehicle->EDD;
+
+          /* set next_carrier to the vehicle's convoy leader */
+	  *next_carrier = pMoveNode->vnode->ptr_convoy_queue_node->leader_vehicle;
+	  //@ Note: we need to consider the communication delay between the packet source vehicle and the leader
+
+	  return TRUE;
+        }	
+
+3. The communication between the vehicle and the AP is modified.
+ - When a convoy head approaches the AP, we let the convoy leader transmit its packets to the AP.
+ - In order to match the actual delivery delay with the expected delivery delay, we let the convoy head
+   arrives at the intersection having the AP be able to transmit its packets.
+ - We modified the function of VADD_Is_Within_AP_Communication_Range() as follows:
+   . OLD:
+    distance = vehicle->edge_length - vehicle->current_pos_in_Gr.offset;
+    
+    /* check whether or not the distance is greater than the communication range of access point */
+    if(distance > param->communication_range)
+      return result;
+    else
+      result = TRUE;
+
+   . NEW:
+    distance = fabs(vehicle->edge_length - vehicle->current_pos_in_Gr.offset);
+    
+    /* check whether or not the distance is greater than the communication range of access point */
+    if(distance <= ERROR_TOLERANCE_FOR_REAL_ARITHMETIC)
+      result = TRUE;
+    else
+      return result;
+
+[v1.6.0-2008-11-2]
+1. I fixed a serious bug that when a vehicle arrived at an intersection, it let its leader forward the packets to 
+another convoy with greater EDD that its leader's EDD.
+  - at VADD_Is_There_Next_Carrier_At_Intersection() in vadd.c
+  - OLD:
+      case VANET_FORWARDING_BASED_ON_CONVOY:
+	if(next_carrier_candidate->ptr_convoy_queue_node->leader_vehicle->EDD < min_next_carrier_EDD)
+
+  - NEW:
+      case VANET_FORWARDING_BASED_ON_CONVOY:
+        if((next_carrier_candidate->ptr_convoy_queue_node->leader_vehicle->EDD < vehicle->ptr_convoy_queue_node->leader_vehicle->EDD) 
+        && (next_carrier_candidate->ptr_convoy_queue_node->leader_vehicle->EDD < min_next_carrier_EDD))
+        
+2. I need to implement to let the convoy leader forward back its packet to the following vehicle 
+when it passes the intersection close to the intersection having the destination.
+  - This can increase the probability that the convoy can forward the packets to another vehicle going to the destination
+  at the intersection.
+
+[v1.6.8-2008-11-23]
+1. I fixed the code for computing the EDD based on the trajectory at VADD_Compute_TBD_Based_EDD() in vadd.c.
+ - In the previous version, the carry distance is used for the current edge length.
+ - In this version, the carry distance is the accumulated length from the starting position to the current position.
+
+[v2.0.0-2009-2-3]
+1. This version is for iTBD to simulate the Internet access in vehicular networks.
+
+[v2.0.5-2009-2-26]
+1. When enlarging the memory of augmented graph Ga, the gnode of neighbor node will point to an invalid position
+ for the graph node.
+  - We need to update the gnode pointers of neighbor nodes after the realloc().
+
+[v2.0.7-2009-2-27]
+1. I fixed the part of returning the dynamic memory of intersection_edd_queue in
+ shortest-path.c as follows:
+ - In Free_Graph(), I added free() just after DestroyQueue().
+
+[v2.1.0-2009-3-1]
+1. I add the dynamic memory return for AP table ap_table_for_Gr in main.c as follows:
+ - In run(),
+   Free_Traffic_Table(&ap_table_for_Gr); //release the memory occupied by the traffic AP table in real graph Gr
+
+[v2.1.0-2009-3-3]
+1. For the measurement of link delay on one road segment, we need to use option -a in order to specify
+comparison_target_type as COMPARISON_AVERAGE_LINK_DELAY_ESTIMATION_TYPE.
+ - This option allows each vehicle entering the road segment to generate one packet towards the end of the road segment having the AP.
+ - This means that only the stationary vehicle will not generate packets even though the stationary vehicle option is specified; that is, the stationary vehicle is treated as a regular vehicle, so it moves on the road segment towards the end of the road segment.
+
+2. Check the vehicle arrival number at the directional edge to compute the mean link delay, the link delay standard deviation and Average Component Length.
+ - If the arrival number is zero, the mean link delay is the edge length divided by the mean vehicle speed and the link delay standard deviation is zero. For the Average Component Length, the same is applied.
+ - I modified the following functions:
+   . VADD_Compute_Edge_Delay()
+   . VADD_Compute_Subedge_Delay()
+   . VADD_Compute_Average_Convoy_Length()
+   . VADD_Compute_Edge_Delay_Standard_Deviation()
+   . VADD_Compute_Subedge_Delay_Standard_Deviation()
+
+- For example, in VADD_Compute_Edge_Delay(), 
+
+  /* check the vehicle arrival for the directional edge:
+     Note that for the directional edge with no vehicle arrival, the edge's mean link delay is 
+     the edge's length divided by mean vehicle speed and the link delay standard deviation is zero.*/
+  if(pGraphNode->mean_interarrival_time == INF)
+  {
+    delay = l/v;
+    return delay;
+  }  
+
+- For example, in VADD_Compute_Edge_Delay_Standard_Deviation(),
+  /* check the vehicle arrival for the directional edge:
+     Note that for the directional edge with no vehicle arrival, the edge's mean link delay is 
+     the edge's length divided by mean vehicle speed and the link delay standard deviation is zero.*/
+  if(pGraphNode->mean_interarrival_time == INF)
+  {
+    carry_distance_sd = 0;
+    return carry_distance_sd;
+  }  
+
+[v2.1.3-2009-3-5]
+1. This version supports the geometric position of each vehicle in the 2-D Cartesian coordinate system.
+ - With the geometric positions of vehicles, it is possible for vehicles to communicate with each other
+  with the communication range R.
+ - Especially, when a vehicle approaches an intersection, it investigates other vehicles 
+   within its communication range.
+ - Thus, we can support the more realistic communication scenario.
+
+2. Fix at VADD_Is_There_Next_Carrier_On_Road_Segment_Incident_To_Intersection() in vadd.c
+ - OLD:
+  /** obtain the pointer to the direaction edge of <tail_node,head_node> */
+   if(edge_type == OUTGOING_EDGE) //outgoing edge for tail_node
+     pEdgeNode = FastLookupDirectionalEdgeQueue(G, tail_node, head_node);
+   else //incoming edge for tail_node */
+     pEdgeNode = FastLookupDirectionalEdgeQueue(G, head_node, tail_node);
+
+ => In this code, we cannot obtain the pointer to the directed edge of <tail_node,head_node>.
+    edge_type is used to compute the distance between the current vehicle and the next carrier candidate.
+
+ - NEW:
+  /** obtain the pointer to the direaction edge of <tail_node,head_node> */
+  pEdgeNode = FastLookupDirectionalEdgeQueue(G, tail_node, head_node);
+
+3. Note that the convoy leader becomes the next carrier
+ - In the previous version, the vehicle within the communication range of the current vehicle
+  became a next carrier for the current vehicle's packets.
+ - In the current version, the neighboring vehicle's leader becomes the next carrier in order to
+   reduce the actual delivery delay caused by the discrete event scheduling.
+
+4. Error in the EDD computation
+ - When an edge's tail node is one of APs, the link delay of this edge should be the corresponding value.
+ - However, in the previous version, the link delay of this edge is set to zero.
+   . This is wrong since after the packet should be forwarded to the head of the edge, it can be forwarded to
+     the AP.
+   . At the head of the edge, we use average forwarding probability to compute the EDD at the head node.
+ - Modification at VADD_Compute_EDD_Based_On_Stochastic_Model() and VADD_Compute_EDD_And_EDD_SD_Based_On_Stochastic_Model() in vadd.c:
+   . OLD:
+     ...
+    if(IsVertexInTrafficTable(ap_table, pDelayNode->enode->tail_node) == TRUE) 
+    /* check whether pDelayNode's tail_node is equal to one of access points in ap_table */
+    {
+      label = 1;
+      
+      /* set the edge_delay of the edge corresponding to pDelayNode with eid */
+      pDelayNode->enode->head_gnode->edge_delay = 0;	
+    }
+    ...
+    if(label == 1 || label == 2)
+    { 
+      P = 0; //Since a destination is placed at the end of this road segment, the forwarding probability must be zero
+    }
+    ...
+    /* set the (n+1)-column entry to -d where d is edge delay */
+    if(label == 1)
+      A[row_id][n] = 0; //Since pDelayNode's tail_node is equal to one of access points, the edge delay must be zero.
+    else
+      A[row_id][n] = -pDelayNode->edge_delay;
+    ...
+ 
+   . NEW:
+     ...
+    if(IsVertexInTrafficTable(ap_table, pDelayNode->enode->tail_node) == TRUE) 
+    /* check whether pDelayNode's tail_node is equal to one of access points in ap_table */
+    {
+      label = 1;
+      
+      /* set the edge_delay of the edge corresponding to pDelayNode with eid */
+      //pDelayNode->enode->head_gnode->edge_delay = 0;	
+    }
+    ...
+    if(label == 2)
+    { 
+      P = 0; //Since a destination is placed at the end of this road segment, the forwarding probability must be zero
+    }
+    ...
+    /* set the (n+1)-column entry to -d where d is edge delay */
+      A[row_id][n] = -pDelayNode->edge_delay;
+    ...
+
+[v2.1.5-2009-3-6]
+1. In this version, I modified the EDD computations for TBD and VADD according to our ICDCS'09 paper in vadd.c.
+
+[v2.1.8-2009-3-9]
+1. In this version, I implemented three types of link selection; (i) Angle, (ii) Geographic distance, and (iii) Link delay. Two types of (ii) and (iii) is a little better than type (i), but is not much.
+
+[v2.1.9-2009-3-10]
+1. This version supports to determine the percetange of vehicles as AP passing vehicles that are guaraneed to aperiodically visit an AP by determining their destination to the intersection with the AP alternately.
+
+[v2.2.0-2009-3-11]
+1. In order to make the packet delivery close to an accurate one, whenever a packet is generated,
+the packet holder vehicle tries to send its packets including the new packet to a better carrier.
+Also, iteratively, these packets are transmitted to the next carrier until the packets cannot be forwarded to the 
+next carrier.
+ - Modification in main.c
+  case PACKET_ARRIVE:
+    current_time = smpl_time();
+    ...
+    flag = VADD_Is_There_Next_Carrier_On_Road_Segment(param, vehicle, Gr, Gr_size, &next_carrier);
+    if(flag) //if-1
+    {
+      VADD_Forward_Packet_To_Next_Carrier(param, current_time, vehicle, next_carrier, &packet_delivery_statistics); //vehicle forwards its packet(s) to the next carrier pointed by next_carrier
+    } //end of if-1
+
+    break;
+
+[v2.2.1-2009-3-17]
+1. This version supports the anycast for the multiple APs.
+  - The intersection EDD for each AP is computed and then the minimum among the EDDs is set to the intersection EDD.
+  - The trajectory EDD is computed based on this intersection EDD.
+  - The forwarding probability is recomputed for the real graph after computing the EDD for each edge.
+
+2. The perl scripts are updated for the simulation and data processing in multiple-AP scenarios.
+
+[v2.2.2-2009-3-18]
+1. I fixed a forwarding loop in VADD_Is_There_Next_Carrier_On_Road_Segment() in vadd.c
+  - When a vehicle is placed between two convoys and does not check the EDD of the next carrier candidate, the forwarding loop may happen; the packet is looped between two convoys.
+  - OLD:
+    switch(param->vehicle_vanet_forwarding_type) //switch-1
+    {
+      ...
+      case VANET_FORWARDING_BASED_ON_CONVOY:
+        ...
+        if(distance <= param->communication_range)
+	{ 
+          /* set next_carrier to pMoveNode->vnode */
+	  *next_carrier = pMoveNode->vnode->ptr_convoy_queue_node->leader_vehicle;
+        }	
+	break;
+      ...
+    }
+
+  -NEW:
+    switch(param->vehicle_vanet_forwarding_type) //switch-1
+    {
+      ...
+      case VANET_FORWARDING_BASED_ON_CONVOY:
+        ...
+        if((distance <= param->communication_range) && (pMoveNode->vnode->ptr_convoy_queue_node->cid != vehicle->ptr_convoy_queue_node->cid) && (pMoveNode->vnode->ptr_convoy_queue_node->leader_vehicle->EDD < vehicle->ptr_convoy_queue_node->leader_vehicle->EDD))
+	{ 
+          /* set next_carrier to pMoveNode->vnode */
+	  *next_carrier = pMoveNode->vnode->ptr_convoy_queue_node->leader_vehicle;
+	  flag = TRUE; //set flag to let the for-loop terminate
+        }	
+	break;
+      ...
+    }
+  ...
+  if(param->vehicle_vanet_forwarding_type == VANET_FORWARDING_BASED_ON_CONVOY)
+  {
+    if((flag == FALSE) && (vehicle->id != vehicle->ptr_convoy_queue_node->leader_vehicle->id))
+    {
+      if(vehicle->EDD < vehicle->ptr_convoy_queue_node->leader_vehicle->EDD)
+      {
+	printf("VADD_Is_There_Next_Carrier_On_Road_Segment(): Error: vehicle's EDD(%.2f) is less than vehicle's convoy leader's EDD(%.2f) where vehicle id is %d and the leader's id is %d\n", vehicle->EDD, vehicle->ptr_convoy_queue_node->leader_vehicle->EDD, vehicle->id, vehicle->ptr_convoy_queue_node->leader_vehicle->id);
+	exit(1);
+      }
+
+      *next_carrier = vehicle->ptr_convoy_queue_node->leader_vehicle;      
+    }
+  }
+  ...
+
+2. I updated the following two functions in the similar way with (1):
+ (i) VADD_Is_There_Next_Carrier_At_Intersection() and (ii) VADD_Is_There_Next_Carrier_On_Road_Segment_Incident_To_Intersection(). 
+
+[v2.2.3-2009-3-19]
+1. For the EDD update, we consider the number of APs.
+  - A single AP scenario uses the function of VADD_Compute_EDD_And_EDD_SD_Based_On_Stochastic_Model().
+  - The multiple-AP scenario uses the function of VADD_Compute_EDD_And_EDD_SD_Based_On_Stochastic_Model_For_Multiple_APs().
+
+[PTBD-v1.0.0-2009-7-11]
+1. This is the first PTBD version.
+
+[PTBD-v1.0.1-2009-7-13]
+1. This supports the reverse forwarding from AP to destination vehicle.
+ - A single AP and a single destination vehicle are supported in this version.
+
+[PTBD-v1.0.2-2009-7-14]
+1. This version supports the data forwarding from AP to destination vehicle with a correct delivery result.
+ - Assume that every vehicle knows the destination vehicle's trajectory and current position.
+
+2. Work list to do in the next version
+ - Packet needs tp contain the trajectory of the destination vehicle.
+ - Carriers compute the EDD using this trajectory in the packet.
+ - The selection of a target point 
+   . Option 1: A target point is an intersection on the vehicle trajectory.
+   . Option 2: A target point is an arbitrary point on the vehicle trajectory.
+
+[TBDF-v1.0.6-2009-7-23]
+1. This version provides the vehicle trajectory and the carrier trace for each packet.
+
+[TBDF-v1.0.7-2009-7-24]
+1. This version supports a forwarding table queue to let each vehicle know its EDD towarding 
+an arbitrary target intersection without computing the EDD for the intersection.
+  - This saves the simulation time a lot to let vehicles not compute their EDDs for arbitrary target points.
+
+2. Memory contamination by invalid free()
+  - In shortest-path.c, at Free_Traffic_Table(),
+    . We need to check the number of table. If number > 0, then free table->list; otherwise, the memory contamination happens, so other dynamic memory structures are affected!
+
+    . OLD:
+	free(table->list);
+ 	table->number = 0;
+	table->list = NULL;
+
+    . NEW:
+        if(table->number > 0)
+	{
+	  free(table->list);
+ 	  table->number = 0;
+	  table->list = NULL;
+	}
+
+[TBDF-v1.1.0-2009-7-27]
+1. This version is the first version to provide the TDBD forwarding in two target point selection types:
+(i) Dynamic target point selection and (ii) Static target point selection.
+  
+[TBDF-v1.1.0-2009-7-28]
+1. There is a logical error in VADD_Is_Within_AP_Communication_Range() in vadd.c
+ - We need to check whether or not the AP is located at not only the head node of the edge, but also the tail node of the edge.
+ - In the previous version, only the head node is checked.
+
+[TBDF-v1.1.3-2009-7-28]
+1. In the current dynamic target point selection, the packet will be directed the direction getting far away from the vehicle, even though the packet arrives at the vehicle trajectory and is geographically close to the destination vehicle.
+ - This is caused by our optimization model such that p* <- arg min_{p in Tr}{|EDD_p - EAD_p|}.
+ - Also, each carrier computes its own optimal target point, so the packet cannot be consistently directed to the destination vehicle.
+
+2. We change our dynamic target point selection as follows.
+ - Once the packet carrier arrives at the destination vehicle trajectory, the set of intersections for an optimal target point are determined as follows: 
+  (i) Case 1: The packet is behind the destination vehicle on the vehicle trajectory
+      - The set is the set of the remaining intersections on the vehicle trajectory from the current intersection to the ending intersection.
+   
+  (ii) Case 2: The packet is before the destination vehicle on the vehicle trajectory
+      - The set is the set of the intersections between the packet's current intersection and the tail node intersection of the destination vehicle's current edge.
+   
+   => After selecting the set of intersections, the current optimization is performed to find the next optimal target point as rendezvous point.
+
+[TBDF-v1.1.6-2009-7-30]
+1. This version supports three kinds of target point selection types: (i) Adaptive target point, (ii) Static target point and (iii) Dynamic target point.
+ - Adaptive one updates the target point when the packet is close to the vehicle trajectory.
+   . If the packet location is ahead of the destination vehicle, the search space is the packet location and the destination vehicle location.
+   . Otherwise, the search space is the destination vehicle's whole trajectory ffrom its current location.
+
+[TBDF-v1.1.9]
+1. This version tries the progressivel refining stepped search for in-situ target points in the data forwarding
+for infrastructure-to-vehicle communications.
+ 1.1 How often is the target point computation performed?
+   . In order to let intermediate vehicles perform consistent forwarding towards a target point, 
+     the computation of a new target point should be performed with some interval, such as the half of EDD 
+     to the current target point.
+
+   . Let tp(i) be the current target point and tp(i+1) be the next target point. 
+     Let EDD(tp(i)) be the EDD from the current position to the target point tp(i).
+  
+   . The new target point tp(i+1) is computed after EDD(tp(i))/k during the packet delivery. 
+     For k = 2, we perform the computation of a new target point after EDD(tp(i))/2.
+
+ 1.2 How to determine the search space for a new target point?
+   . Option 1: From the destination vehicle's current position to its end position on the vehicle trajectory.
+   . Option 2: From the destination vehicle's current position to the target point computed in Option 1.
+     -> This allows the new target point to be closer to the destination vehicle.
+
+2. This version supports a global packet queue to manage the valid packets whose TTLs are not expired yet.
+
+[TBDF-v1.2.2]
+1. This version supports a stationary destination vehicle that stays at an intersection.
+
+2. The EDD and ADD are close to each other.
+  - For example, in node-9 graph, EDD = 36 and ADD = 113.
+  - Check-list
+    . Let the forwarding be performed only at an intersection, not at the area within the communication range of an intersection.
+    . Test whether the Gaussian elimination is implemented corrected with matlab or not.
+
+3. The Gaussian Elimination implementation seems to work well.
+  - The 36-intersection linear system has been checked with matlab solution.
+  - The maximum difference (=0.003656) of difference vector entry is less than 0.01 second.
+  - Thus, I can use my implementation for the linear system solving.
+
+[TBDF-v1.3.4]
+1. This version implements the stationary-node-based data forwarding.
+
+2. Vanet information table 
+  - This table contains the data structures used in the data forwarding in the VANET.
+  - vanet_table is one member of parameter_t.
+  - ptr_vanet_table is one member of global_packet_queue_t.
+
+3. Target point information in stationary node
+  - stationary node queue node contains the target point information as follows:
+    . target_point_id
+    . tp_table
+    . latest_packet_seq
+    . latest_packet_receive_time
+    . latest_packet_ptr
+
+[TBDF-v1.3.5]
+1. This version has almost implemented the stationary-node-based data forwarding.
+ - Note that the stationary node exists at the intersection having an AP.
+ - Whenever AP generates a packet, it forwards the packet into the stationary node at the same intersection.
+
+[TBDF-v1.3.7]
+1. This version supports the packet-trajectory-based forwarding where a stationary node is deployed at each intersection.
+
+[STBD-v1.3.8: 10/17/09]
+1. This version supports three modes of data forwarding: (i) TBD, (ii) VADD, and (iii) STBD.
+ - We call the stationary-node-and-trajectory-based data forwarding as STBD.
+
+[STBD-v1.4.0: 10/18/09]
+1. This version supports a random waiting time at intersection with a uniform distribution.
+
+2. This version also supports multiple APs according to the options of M (for multiple APs) and N (for the maximum AP number).
+
+[STBD-v1.4.1: 10/26/09]
+1. This version supports the registration of forwarding probability information into the directional edge's probability-and-statistics-queue
+
+
+[STBD-v1.4.5: 11/05/09]
+1. This version supports three kinds of stationary-node-based forwarding: (i) static forwarding, (ii) partially dynamic forwarding (i.e., semi-dynamic forwarding), and (iii) fully dynamic forwarding (i.e., dynamic forwarding)
+
+[STBD-v1.4.7: 11/07/09]
+1. This version supports the optimal target intersection selection through the packet delivery probability using the functions in gsl-util.c.
+ - The packet delivery probability is defined as the probability that the packet will arrive at the target point (i.e., target intersection) earlier than the destination vehicle.
+
+[STBD-v1.5.0: 11/10/09]
+1. This version supports the logging for the packet delay measurement given packet delay measurement target point in param-for-download.conf.
+
+[STBD-v1.5.1: 11/11/09]
+1. I made a big mistake to prevent the packets from being forwarded at intersection area(s).
+ : The remedy is done as follows:
+ 1.1 at run() in main.c
+ [OLD]
+ /** if there is a better carrier in this intersection area, it passes its packet to the carrier */
+ if(param->vehicle_vanet_target_point_selection_type != VANET_TARGET_POINT_SELECTION_PACKET_TRAJECTORY_TARGET_POINT) //if-4.1.2
+	
+ [NEW]
+ /** if there is a better carrier in this intersection area, it passes its packet to the carrier */
+ if((param->data_forwarding_mode == DATA_FORWARDING_MODE_UPLOAD) || (param->data_forwarding_mode == DATA_FORWARDING_MODE_DOWNLOAD && param->vehicle_vanet_target_point_selection_type != VANET_TARGET_POINT_SELECTION_PACKET_TRAJECTORY_TARGET_POINT)) //if-4.1.2
+
+
+ 1.2 at VADD_Is_There_Next_Carrier_At_Intersection() in vadd.c 
+ [OLD]
+  /** check whether vehicle has vaild target point and sequence number under download mode */
+  if(vehicle->target_point_id == 0 || vehicle->latest_packet_seq == 0)
+  {
+    return FALSE;
+  }
+ 
+ [NEW]
+  /*@[11/11/09] Note: I made a mistake that I omitted the following condition "if(param->data_forwarding_mode == DATA_FORWARDING_MODE_DOWNLOAD)", so I prevented the forwarding at intersections */
+  if(param->data_forwarding_mode == DATA_FORWARDING_MODE_DOWNLOAD)
+  {
+      /** check whether vehicle has vaild target point and sequence number under download mode */
+    if(vehicle->target_point_id == 0 || vehicle->latest_packet_seq == 0)
+    {
+      return FALSE;
+    }
+  }
+
+ 1.3 at VADD_Is_There_Next_Carrier_At_Intersection_Area() in vadd.c
+ [OLD]
+  /** check whether vehicle has vaild target point and sequence number under download mode */
+  if(vehicle->target_point_id == 0 || vehicle->latest_packet_seq == 0)
+  {
+    return FALSE;
+  }
+ 
+ [NEW]
+  /*@[11/11/09] Note: I made a mistake that I omitted the following condition "if(param->data_forwarding_mode == DATA_FORWARDING_MODE_DOWNLOAD)", so I prevented the forwarding at intersections */
+  if(param->data_forwarding_mode == DATA_FORWARDING_MODE_DOWNLOAD)
+  {
+      /** check whether vehicle has vaild target point and sequence number under download mode */
+    if(vehicle->target_point_id == 0 || vehicle->latest_packet_seq == 0)
+    {
+      return FALSE;
+    }
+  }
+
+[TDF-v2.0.0: 11/16/09]
+1. This version corrects the construction of the vehicle delay distribution.
+ - The previous version makes the the vehicle delay variance be 
+the sum of the speed variances for the edges on the vehicle trajectory.
+ - This version makes the vehicle delay variance be the sum of the travel time variances for the edges on the vehicle trajectory.
+
+[TDF-v2.0.1: 11/18/09]
+1. This version revises the computation of the mean and standard deviation of the travel time for a roag segment through the integration of the Gaussian random variable.
+ - To compute the mean and standard deviation of the travel time for a road segment, we call GSL_Vanet_Compute_TravelTime_And_Deviation() in gsl-util.c.
+
+[TDF-v2.0.3: 11/19/09]
+1. This version lets the packet traverse reversely along the vehicle trajectory when the packet has arrived at the target point earlier than the destination vehicle.
+
+[TDF-v2.0.5: 11/23/09]
+1. This version supports the calculation of the delivery probability based on the Gamma distributions for the packet delay and the vehicle delay.
+
+*2. Whenever we call a library function, we should include the header file containing the predeclaration of the function.
+ - If not including the header file, the function call returns a wrong value.
+ - For example, when we call gsl_ran_gamma_pdf() without the header file called "", 
+   it returns a wrong value.
+
+[TSF-v2.0.7: 11/25/09]
+1. This version supports three target point computation methods for the packet-trajectory-based forwarding.
+ - Optimal target point
+ - End-intersection target point
+ - Random target point
+
+[TSF-v2.0.9: 11/26/09]
+1. I made a big mistake in computing the variance of the link delay in VADD_Compute_Edge_Delay_Standard_Deviation()
+and VADD_Compute_Subedge_Delay_Standard_Deviation().
+ - OLD:
+  /** compute the variance of link delay */
+    E_D_2 = (pow(l-R,2) - 2*(l-R)*E_L_1 + pow(E_L_2,2))*beta/pow(v,2) + pow(1/lambda+(l-R)/v,2)*(1-beta);
+    ...
+
+ - NEW:
+  /** compute the variance of link delay */
+    E_D_2 = (pow(l-R,2) - 2*(l-R)*E_L_1 + E_L_2)*beta/pow(v,2) + pow(1/lambda+(l-R)/v,2)*(1-beta); 
+    ...
+
+ => Note that this has an error in  pow(E_L_2,2) and that the correct one is E_L_2 without squaring; that is why the previous actual variance is much greater than the expected variance.
+
+2. This version supports the multiple APs for the infrastructure-to-vehicle data delivery.
+ - AP selection methods are determined according to the forwarding schemes
+   1. TSF: select the AP with the minimum EVD (Expected Vehicle Delay).
+   2. RTP (Random Trajectory Point): select the AP that has the shortest delivery delay to the random target point
+   3. LTP (Last Trajectory Point): select the AP that has the shortest delivery delay to the last trajectory point of the destination vehicle; this allows the packet to arrive at the last trajectory point earlier than the destination vehicle.
+
+[TSF-v2.4.0: 12/4/09]
+1. This version supports C++ compilation.
+ - This is for the APL Journal Simulation.
+ - The APL will use the vehicle mobility to collect the detection timestamps.
+
+[TSF-v2.5.1: 1/6/10]
+1. This version modified smpl_random() in rand.c for a random integer in the interval of [i, n].
+   . smpl_random() calls smpl_random_v2().
+   . smpl_random_v1() is the old version and smpl_random_v2() is the new version.
+   . Both are correct, but smpl_random_v2() is logically more readable.
+
+[TSF-v2.6.0: 4/22/10]
+1. I modified the lifetime expiration of the packet to use the packet's ttl rather than to use param->param->communication_packet_ttl.
+  - For example, in vadd.c,
+    . OLD:
+      if(lifetime > param->communication_packet_ttl) //if-1.1
+      { ...
+      }
+
+    . NEW: 
+      if(lifetime > pPacketNode->ttl) //if-1.1
+      { ...
+      }
+
+[TSF-v2.6.0: 5/3/10]
+1. I corrected an if-condition in Enqueue_CarrierTraceEntry_For_Download() in queue.c
+  where node_type == VANET_NODE_AP.
+  Without this correction, there is a run-time error in log_vanet_packet_carrier_trace_for_upload() in util.c. 
+ - OLD: 
+   if(param->vehicle_vanet_edd_model == VANET_EDD_PER_SNODE_MODEL && param->vehicle_vanet_target_point_selection_type == VANET_TARGET_POINT_SELECTION_PACKET_TRAJECTORY_TARGET_POINT)
+
+ - NEW:
+   if(param->vehicle_vanet_target_point_selection_type == VANET_TARGET_POINT_SELECTION_PACKET_TRAJECTORY_TARGET_POINT)
+
+[TSF-v2.6.1: 5/19/10]
+1. There is a run-time error when param->vehicle_path_minimum_hop_count is greater than 1.
+  -> In register_vehicle() and update_vehicle_trajectory() in util.c, there is a bug:
+  - OLD:
+    if(path_hop_count >= param->vehicle_path_minimum_hop_count)
+    //let the path_hop_count have at least a minimum hop count
+        break; 
+    else
+    {
+        /* delete vehicle's path-list */
+        Free_Path_List(vehicle->path_list);
+        vehicle->path_list = NULL;
+    }
+
+  - NEW:
+    if(path_hop_count >= param->vehicle_path_minimum_hop_count)
+    //let the path_hop_count have at least a minimum hop count
+        break; 
+    else
+    {
+        /* delete vehicle's path-list */
+        Free_Path_List(path_list);
+        path_list = NULL;
+    }
+
+[TSF-v2.6.1: 5/25/10]
+1. There are errors in Install_PacketTrajectory_Into_Packet_With_Edge() in queue.c.
+  - The graph node id should be decremented by one for the index for graph node.
+
+   * OLD:
+    ...
+    trajectory_qnode.gnode = &(G[tail_node_id]);
+    memcpy(&(trajectory_qnode.euclidean_pos), &(G[tail_node_id].coordinate), sizeof(G[tail_node_id].coordinate)); 
+    ...
+    trajectory_qnode.gnode = &(G[head_node_id]);
+    memcpy(&(trajectory_qnode.euclidean_pos), &(G[head_node_id].coordinate), sizeof(G[head_node_id].coordinate)); 
+    ...
+
+  - NEW:
+    ...
+    trajectory_qnode.gnode = &(G[tail_node_id-1]);
+    memcpy(&(trajectory_qnode.euclidean_pos), &(G[tail_node_id-1].coordinate), sizeof(G[tail_node_id-1].coordinate)); 
+    ...
+    trajectory_qnode.gnode = &(G[head_node_id-1]);
+    memcpy(&(trajectory_qnode.euclidean_pos), &(G[head_node_id-1].coordinate), sizeof(G[head_node_id-1].coordinate)); 
+    ...
+
+2. I let the destination vehicle receive packets from a stationary node when it arrives at the stationary node
+with packets.
+  - Without this checking, the destination will receive packets from the stationary node after it leaves the stationary node.
+
+[TSF-v2.6.2: 5/27/10]
+1. This version allows the destination vehicle to receive packets from a stationary node when it approaches the stationary node with packets and is within the communication range with the stationary node.
+  - Without this checking, the destination will receive packets from the stationary node after it leaves the stationary node.  
+  - For this purpose, a new function is implemented in vadd.c:
+    VADD_Forward_Packet_From_Stationary_Node_To_Destination_Vehicle().
+
+[TSF-v2.6.3: 5/28/10]
+1. A new function is added to util.c to check whether vehicle is a destination vehicle or not:
+  boolean is_destination_vehicle(parameter_t *param, struct_vehicle_t *vehicle);
+  -> This function can be modified in the case of multiple destination vehicles by replacing
+     param->vanet_table.dst_vnode with a set of destination vehicles later.
+
+[TSF-v2.6.4: 5/28/10]
+1. This version has a bug in Has_Packet_Arrived_Earlier_At_TargetPoint_Than_Destination_Vehicle_With_New_Destination_VERSION_1() in shortest-path.c.
+  - When the estimated edge of the destination vehicle is the first on the vehicle trajectory, a dangling pointing happens for the command of "vanet.db -C 1 -j 50 -u 10800 -n 20".
+   . OLD:
+     *new_dst = atoi(pVertex_Trajectory_QNode->prev->graph_pos.enode->tail_node);
+
+     result = TRUE; //indicate that the packet has arrived at the target point on the destination vehicle's trajectory
+
+     /** update the reverse_traversal_current_hop_trajectory_qnode with the trajectory queue node whose tail node is the vertex having the packet */
+     packet->reverse_traversal_mode_flag = TRUE; //enable the reverse traversal mode
+     packet->reverse_traversal_current_hop_trajectory_qnode = pVertex_Trajectory_QNode;
+
+   . NEW:
+     result = TRUE; //indicate that the packet has arrived at the target point on the destination vehicle's trajectory
+
+     if(pVertex_Trajectory_QNode->order == 0)
+     { //the case where pVertex_Trajectory_QNode points to the first edge on the vehicle trajectory
+         *new_dst = atoi(pVertex_Trajectory_QNode->graph_pos.enode->tail_node);
+
+         /** update the reverse_traversal_current_hop_trajectory_qnode with the trajectory queue node whose tail node is the vertex having the packet */
+         packet->reverse_traversal_mode_flag = TRUE; //enable the reverse traversal mode
+         packet->reverse_traversal_current_hop_trajectory_qnode = pVertex_Trajectory_QNode;
+         packet->reverse_traversal_completion_flag = TRUE; //indicate that the packet has arrived at the source intersection of the destination vehicle's trajectory
+     }
+     else
+     { //the case where pVertex_Trajectory_QNode points to the other edge on the vehicle trajectory
+         *new_dst = atoi(pVertex_Trajectory_QNode->prev->graph_pos.enode->tail_node);
+
+         /** update the reverse_traversal_current_hop_trajectory_qnode with the trajectory queue node whose tail node is the vertex having the packet */
+         packet->reverse_traversal_mode_flag = TRUE; //enable the reverse traversal mode
+         packet->reverse_traversal_current_hop_trajectory_qnode = pVertex_Trajectory_QNode;
+     }
+
+[TSF-v2.6.6: 6/21/10]
+1. This version supports multi-target-point data forwarding to satisfy the user-required delivery probability.
+   - A new flag (called data_forwarding_multiple_target_point_flag) is added to parameter_t.
+
+[TSF-v2.6.6: 6/30/10]
+1. This version includes the selection functions for multiple target points for a single AP as follows:
+   - GetMultipleTargetPoints_For_AP()
+   - GetMultipleTargetPoints_By_PacketTrajectory_For_AP()
+   - GetMultipleTargetPoints_By_RandomIntersection_For_AP()
+
+2. A new queue called target_point_queue_t is added into queue.h to provide multiple target points
+   towards which the copies of a packet will be sent.
+
+[TSF-v2.6.7: 7/1/10]
+1. This version implements the combinations function to evaluate the quality of target points in util.c.
+
+void combinations_for_target_points(int v[], int w[], int start, int n, int k, int maxk, parameter_t *param, double current_time, char *AP_vertex, struct_vehicle_t *destination_vehicle, forwarding_table_queue_t *FTQ, target_point_queue_t *global_TPQ)
+{ /* evaluate the combinations for target points by enumerating all the possible cases of combination nCk 
+   * where n is the number of items and k is the wanted number in the combination.
+	 Parameters:-
+	 	w: intersection vector whose element contains the intersection id 
+		   that is one of intersections consisting of the destination 
+		   vehicle's trajectory
+			
+	 	v: index vector for intersection vector w;
+		   for example, v[1] = 1 and w[v[1]] is the first intersection id
+  */
+
+[TSF-v2.6.8: 7/6/10]
+1. This version adds a new function to compute the optimization value for target point selection
+ for selecting multiple target points to satisfy the user-defined delivery probability in util.c.
+
+double compute_delivery_probability_along_with_delivery_delay_for_target_point(int target_point_id, parameter_t *param, double current_time, char *AP_vertex, struct_vehicle_t *destination_vehicle, forwarding_table_queue_t *FTQ, double *delivery_delay);
+//Given a target point, compute the delivery probability along with the delivery delay for the given target point
+ 
+[TSF-v2.6.9: 7/12/10]
+1. This version completes the searching of optimal target point set for multiple target points.
+
+[TSF-v2.7.0: 7/12/10]
+1. This version has implemented the transmission of multiple packet copies towards the corresponding multiple target point.
+
+2. As next step, I need to make a bitmap to indicate the arrival time of the first packet copy in the global packet queue.
+
+[TSF-v2.7.1: 7/14/2010]
+1. This version has completed the data forwarding between vehicles moving
+ in the opposite directional road segments.  
+  - A new function is added to vadd.c for such a two-way data forwarding as follows:
+
+boolean VADD_Is_There_Next_Carrier_On_Road_Segment(parameter_t *param, struct_vehicle_t *vehicle, struct_graph_node *G, int G_size, struct_vehicle_t **next_carrier)
+{ //determine whether to forward its packets to next carrier moving on the current road segment and return the pointer to the next carrier through *next_carrier; Note that the convoy leader becomes the next carrier 
+	boolean result = FALSE;
+
+#ifdef __OPPOSITE_DIRECTIONAL_DATA_FORWARDING_SUPPORT__
+	/* Data forwarding for two-way road segment */
+	result = VADD_Is_There_Next_Carrier_On_Two_Way_Road_Segment(param, vehicle, G, G_size, next_carrier);
+#else
+	/* Data forwarding for one-way road segment */
+	result = VADD_Is_There_Next_Carrier_On_One_Way_Road_Segment(param, vehicle, G, G_size, next_carrier);
+#endif
+
+	return result;
+}
+
+  - A new parameter is provided to select the forwaring method between one-way forwarding and two-way forwarding.
+    . The parameter called data_forwarding_two_way_forwarding_flag is defined in param.h.
+
+2. When sending more than one packet, the simulator gets stuck.
+  - Find the reason why this stucking happens.
+
+[TSF-v2.7.2: 7/16/2010]
+1. This version supports the maximum number of target points for multi-target-point data forwarding.
+  - A new option (-O) is added to specify the maximum number.
+2. An observation is that the more maximum target points are used, the higher delivery ratio is obtained.
+  - This is because the multi-target-point data forwarding lets some target points be closer to the destination vehicle than the single-target-point data forwarding.
+  - For example, the following commands are used for this observation:
+    1) vanet -j 50 -O 2 -n 15
+    2) vanet -j 50 -O 3 -n 15
+    3) vanet -j 50 -W 0 -n 15
+
+[TSF-v2.7.3: 7/23/2010]
+1. This version allows the multi-target-point forwarding outperform the single-target-point forwarding.
+
+[TSF-v2.7.4: 7/24/2010]
+1. This version reduces the simulation time by letting the simulator perform 
+   the computation of the delivery probability and the delivery delay for 
+   each target point once.
+  - The previous version repeats the computation of a target point for 
+	each size of the target point set.
+
+2. We can display the target points that AP selects in the multiple-target-point data forwarding.
+  - The debug constant variable is defined as __DEBUG_LEVEL_PRINT_TARGET_POINT__ in common.h
+
+3. I fixed GetTargetPoint_By_PacketTrajectory_For_AP() in shortest-path.c
+  - The previous version chooses the last trajectory target point as the last node of the destination vehicle's mobility path, that is, destination_vehicle->path_list->prev->prev->vertex.
+  - The new version chooses the last trajectory target point as the node just before destination vehicle's current tail_node on the vehicle trajectory, that is, destination_vehicle->path_ptr->prev->vertex.
+
+[TSF-v2.7.6: 11/8/2010]
+1. This version modifies the computation of predecessor matrix considering directed edges at all-pairs-shortest-paths.c.
+	- In the previous version, at the initialization of predecessor matrix, if one directed edge (e.g., u->v) has finite value, it is assumed that the oppositely directed edge (e.g., v->u) also has a finiate value.
+	- In this version, both directed edges are checked independently.
+
+[TSF-v2.8.2 5/12/2011]
+1. This version supports the partial deployment of stationary nodes.
+ - work on line 6897 in shortest-path.c
+ - for the partial deployment (i.e., param->communication_multiple_SN_flag == TRUE), the packet will stay at the target point rather than the traverse along the reverse trajectory.
+
+[TSF-v2.8.3 5/13/2011]
+1. This version supports the partial deployment of stationary nodes for the tre target point selections
+ - TSF
+ - LTP
+ - RTP
+
+[TSF-v2.8.6 5/9/2013]
+1. This version supports ctag and has vimrc file for ctag.
+ - Note: rename vimrc into .vimrc and put it in your home directory.
+
+[TSF-v6.0.0: 7/13/2013]
+1. This version supports both TSF and TBD.
+ - For TSF, select param-configuration file in common.h as follows:
+	#define CONF_FILE CONF_FILE_FOR_DOWNLOAD
+	//#define CONF_FILE CONF_FILE_FOR_UPLOAD
+
+ - For TBD, select param-configuration file in common.h as follows:
+	//#define CONF_FILE CONF_FILE_FOR_DOWNLOAD
+	#define CONF_FILE CONF_FILE_FOR_UPLOAD
+
+[TPD-v1.0.0: 7/13/2013]
+1. This version supports TPD, TSF, and TBD.
+ - For TPD, select param-configuration file in common.h as follows:
+	//#define CONF_FILE CONF_FILE_FOR_DOWNLOAD
+	//#define CONF_FILE CONF_FILE_FOR_UPLOAD
+	#define CONF_FILE CONF_FILE_FOR_V2V
+
+ - For TSF, select param-configuration file in common.h as follows:
+	#define CONF_FILE CONF_FILE_FOR_DOWNLOAD
+	//#define CONF_FILE CONF_FILE_FOR_UPLOAD
+	//#define CONF_FILE CONF_FILE_FOR_V2V
+
+ - For TBD, select param-configuration file in common.h as follows:
+	//#define CONF_FILE CONF_FILE_FOR_DOWNLOAD
+	#define CONF_FILE CONF_FILE_FOR_UPLOAD
+	//#define CONF_FILE CONF_FILE_FOR_V2V
+
+[TPD-v1.0.1: 7/15/2013]
+1. I am working for the V2V data forwarding:
+ - In main.c:2819
+ - In vadd.c:7827
+
+[TPD-v1.0.1: 7/16/2013]
+1. Encounter Probability
+ - Packet carrier vehicle computes the encounter probability of each road segment belonging to
+ its trajectory with other vehicles.
+
+[TPD-v1.0.2: 8/7/2013]
+1. This version is building the construction of predicted encounter graph.
+
+[TPD-v1.0.3: 8/8/2013]
+1. There is a problem in line 4149 in main.c:
+	 Install_PacketTrajectory_Into_Packet(param, current_time, Gr, Gr_size, packet_src_vertex, packet_dst_vertex, pPacket);
+		- There is an infinite loop in Install_FullPacketTrajectory_Into_Packet() in line 3241 in queue.c:
+			 while(j != i)
+			 {
+				 ...
+			 }
+		- It seems like that it cannot find out the end vertex for the trajectory.
+
+[TPD-v1.0.3: 8/9/2013]
+1. This version is ready for the implementation of TPD.
+  - When a vehicle approaches AP with packets, it computes its EDR with predicted encounter graph toward the destination vehicle.
+
+[TPD-v1.0.4: 8/9/2013]
+1. This version is making the part to find out next vehicles encountered by packet carrier (named src_vehicle) in tpd.c.
+  - TPD_Do_Vehicles_Encounter() in tpd.c
+
+[TPD-v1.0.5: 8/11/2013]
+1. This version has implemented the function to check whether two vehicles encounter in an edge.
+  - TPD_Do_Vehicles_Encounter().
+
+2. path_list's weight has the number of path nodes in the path list.
+
+[TPD-v1.0.6: 8/12/2013]
+1. This version displays the vehicle trajectory and the arrival time at each path node along the trajectory.
+  - show_trajectory_and_arrival_time_for_all_vehicles() in util.c
+
+[TPD-v1.0.7: 8/12/2013]
+1. This version is implementing the contruction of the encounter graph for src_vehicle in tpd.c.
+  - TPD_Construct_Predicted_Encounter_Graph().
+
+[TPD-v1.0.8: 8/14/2013]
+1. This version has implemented the insertion of a queue node into the queue Q in the predicted encounter graph.
+  - Enqueue_By_KeyAscendingOrder(queue_t *Q, queue_node_t *node) in queue.c.
+
+[TPD-v1.0.9: 8/14/2013]
+1. This version links the child graph nodes and its parent graph node with each other in TPD_Construct_Predicted_Encounter_Graph().
+
+[TPD-v1.1.0: 8/16/2013]
+1. This version almost completed the implementation of the constructionof predicted encounter graph per vehicle in TPD_Construct_Predicted_Encounter_Graph() in tpd.c.
+2. The procedure of the construction of predicted encounter graph is as follows:
+
+/* Step 1: Exit the loop if the heap Q is empty or all of the vehicles are 
+ *			visited. */
+                                                                            
+/* Step 2: Dequeue the root from Q and set it to the current vehicle. */
+                                                                            
+/* Step 3: If a graph node for current_vehicle does not exist, 
+ *		create a graph node for the current vehicle and insert it 
+ *		into G. Let the parent graph node point to this graph node as a 
+ *		child graph node.
+ *		Otherwise, delete this queue node and go to Step 1. */
+                                                                            
+/* Step 4: Check whether current_vehicle is dst_vehicle or not:
+ *		If current_vehicle is dst_vehicle, go to Step 1.
+ *		Otherwise, go to Step 5.
+ *		*/
+                                                                            
+/* Step 5: Search the encountered vehicles met by the current vehicle
+ *		with a certain encounter probability (>= threshold (e.g., 
+ *		0.7)) as child vehicles into Q. Perform the following: 
+ *			- let the current vehicle point to its parent vehicle.
+ *			- let the parent vehicle point to the current vehicle.
+ *		After the search, go to Step 1. 
+ *		*/
+
+[TPD-v1.1.1: 8/19/2013]
+1. This version has completed the construction of predicted encounter graph in
+TPD_Construct_Predicted_Encounter_Graph() in tpd.c.
+  - Note: The case where D_encounter is negative is considered as the case
+    two vehicles cannot encounter because the packet carrier dismissed 
+	the other vehicle before the forwarding is performed.
+
+[TPD-v1.1.2: 8/20/2013]
+1. This version resets two queues Q and G in the predicted encounter graph
+after the computation of EDR in TPD_Compute_EDR() in tpd.c.
+
+[TPD-v1.1.3: 8/20/2013]
+1. In this version, destination vehicle can be encountered with other vehicles
+ in update_vehicle_trajectory_with_mobility_list() in util.c.
+  -  if(mobility_type == MOBILITY_OPEN)
+    {
+		/* set path_ptr and path_current_hop */
+		vehicle->path_ptr = vehicle->path_list->next;
+		vehicle->path_current_hop = 0; //reset path_current_hop to zero
+
+		/* NEW Line */
+		compute_expected_arrival_time_for_path_node(arrival_time, vehicle->path_list, vehicle->speed); //compute the expected arrival time for each path node along path_list
+	}
+
+[TPD-v1.1.4: 8/21/2013]
+1. This version is implementing the pruning of an encounter graph by removing graph nodes that are not used as intermediate nodes for
+ the data forwarding from source vehicle to destination vehicle.
+   - TPD_Prune_Encounter_Graph() in tpd.c.
+
+[TPD-v1.1.5: 8/22/2013]
+1. This version has implemented the pruning of an encounter graph.
+  - TPD_Prune_Encounter_Graph() in tpd.c.
+
+[TPD-v1.1.6: 8/22/2013]
+1. This version has completed the pruning of an encounter graph G.
+
+[TPD-v1.1.7: 8/24/2013]
+1. This version is implementing the calculation of encounter probability in
+TPD_Do_Vehicles_Encounter() in tpd.c.
+
+[TPD-v1.1.8: 8/26/2013]
+1. This version is implementing the calculation of encounter probability in
+TPD_Compute_Encounter_Probability() in tpd.c.
+  - I will implement the double integration in Equation (11) in TPD paper in
+    gsl-util.c.
+
+[TPD-v1.1.9: 9/7/2013]
+1. This version has implemented the encounter probability computation function in gsl-util.c.
+  double GSL_TPD_Encounter_Probability_For_Gamma_Distribution(double mu_y, 
+  double sigma_y, 
+  double mu_x, 
+  double sigma_x, 
+  double interval_start, 
+  double interval_end, 
+  double link_delay_a, 
+  double link_delay_b);
+  //compute the delivery probability for two Gamma random variables: (i) Vehicle_b's travel delay of Gamma distribution for (mu_y, sigma_y) and (ii) Vehicle_a's travel delay of Gamma distribution for (mu_x, sigma_x) along with Vehicle_a's link_delay_a on the edge (n_i, n_j) and Vehicle_b's link_delay_b on the edge (n_j, n_i).
+
+[TPD-v1.2.0: 9/7/2013]
+1. This version supports the predicted encounter graph with the encounter probability computation function.
+
+2. The next step is to implement a function computing the Expected Delivery Ratio (EDR) with the predicted encounter graph.
+
+[TPD-v1.2.0: 9/10/2013]
+1. This version is implementing TPD_Compute_EDR_For_Encounter_Graph() to compute the EDR per each graph node in the encounter graph G.
+
+[TPD-v1.2.1: 9/11/2013]
+1. This version has completed the implementation of TPD_Compute_EDR_For_Encounter_Graph().
+
+2. There is a run-time error as follows:
+*** Simulation: start_time=1378898814 ***
+[3600.00] VANET_EDD_UPDATE: EDD Table has been updated!
+[7200.00] VANET_EDD_UPDATE: EDD Table has been updated!
+gsl: qags.c:548: ERROR: cannot reach tolerance because of roundoff error
+Default GSL error handler invoked.
+Aborted (core dumped)
+
+[TPD-v1.2.2: 9/12/2013]
+1. The following run-time error is fixed:
+  <Problem>
+*** Simulation: start_time=1378898814 ***
+[3600.00] VANET_EDD_UPDATE: EDD Table has been updated!
+[7200.00] VANET_EDD_UPDATE: EDD Table has been updated!
+gsl: qags.c:548: ERROR: cannot reach tolerance because of roundoff error
+Default GSL error handler invoked.
+Aborted (core dumped)
+
+  <Root>
+  The double integration returns 0 and keeps repeating the computation for almost zero
+  integration.
+
+  <Solution>
+  We handle the error status of gsl_integration_qags() with the turning-off of the 
+  default error handler.
+
+    OLD:
+	gsl_integration_qags(&F, interval_start, interval_end, 0, 1e-7, limit, w, &result, &error);
+
+
+	NEW:
+	gsl_error_handler_t *old_handler = gsl_set_error_handler_off(); //switch off default error handler, store old error handler in old_handler
+	int status = 1; //status after the call to gsl_integration_qags()
+	double relerr = 0.01; //relative error
+	...
+    while(status)
+    {
+		status = gsl_integration_qags(&F, interval_start, interval_end, 0, 1e-7, limit, w, &result, &error);
+		relerr *= 1.1; //increased tolerance (relative error)
+		if(status)
+		{
+			result = 0;
+			break;
+		}
+	}
+
+	gsl_set_error_handler(old_handler); //restore the old error handler
+
+2. Set the integration for zero parameters to zero in 
+GSL_TPD_Probability_Function_For_Gamma_Distribution():
+  OLD:
+	absolute_mu_y = fabs(mu_y);
+	if(absolute_mu_y <= ERROR_TOLERANCE_FOR_REAL_ARITHMETIC)
+	{
+		f1 = 1; //CDF is 1
+	}
+
+  NEW:
+	absolute_mu_y = fabs(mu_y);
+	if(absolute_mu_y <= ERROR_TOLERANCE_FOR_REAL_ARITHMETIC)
+	{
+		f = 0;
+		return f;
+	}
+
+[TPD-v1.2.3: 9/14/2013]
+1. This version computes the EDR and EDD of a next_carrier vehicle in TPD_Compute_EDR_and_EDD().
+
+2. I will implement the data forwarding based on the EDR and EDD from RSU and the destination vehicle.
+
+[TPD-v1.2.4: 9/15/2013]
+1. This version has implemented the selection of the next-carrier vehicle within the communication range of an AP in tpd.c.
+  - boolean TPD_Is_There_Next_Carrier_At_Intersection_For_AP(parameter_t *param,
+			double current_time,
+			struct_access_point_t *AP,
+			struct_graph_node *G,
+			int G_size,
+			struct_vehicle_t **next_carrier);
+
+2. I need to let a vehicle with packets select a better carrier both at an intersection and at a road segment.
+  - At a road segment, a packet carrier vehicle needs to check whether a better next-carrier vehicle exists in both directions in the road segment.
+
+[TPD-v1.2.5: 9/17/2013]
+1. This version has implemented the data forwardin at an intersection  in tpd.c as follows:
+  - boolean TPD_Is_There_Next_Carrier_At_Intersection(parameter_t *param,
+			double current_time,
+			struct_vehicle_t *vehicle,
+			struct_graph_node *G,
+			int G_size,
+			struct_vehicle_t **next_carrier);
+	//determine whether to forward its packets to next carrier with the highest EDR, moving on the other road segment of the intersection and return the pointer to the next carrier through *next_carrier
+
+[TPD-v1.2.6: 9/17/2013]
+1. In TPD, vehicle does not forward its packets to the leader vehicle of the convoy
+to which the vehicle belongs.
+
+[TPD-v1.2.7: 9/18/2013]
+1. There is an error in the construction of predicted encounter graph in tpd.c 
+where the number of vehicles is 200 with "run -n 200" as follows:
+  - TPD_Compute_EDR_For_Encounter_Graph:803 graph_node(57) is not resolved for EDR
+
+[TPD-v1.2.8: 9/25/2013]
+1. This version solved the resolution problem in TPD_Compute_EDR_For_Encounter_Graph() and
+TPD_Compute_EDD_For_Encounter_Graph().
+  - We defer the resolution of the node having unresolved child node(s) by enqueueing the node into the queue Q.
+  - This deferring allows the unresolved child node(s) to be resolved earlier than the unresolved parent node.
+  - This deferred Breadth First Search (BFS) can resolve the EDR or EDD of all graph nodes.
+  - Note: To prevent a pointer to a graph node from being queued multiple times, we add a flag called queueing_flag in adjacency_list_queue_node_t as follows:
+	typedef struct _adjacency_list_queue_node_t {
+		...
+		 boolean queueing_flag; //flag to show whether this node or the pointer to this node is queued in some queue, such as adjacency_list_pointer_queue_t Q
+		...
+	} adjacency_list_queue_node_t;
+
+
+[TPD-v1.2.9: 9/27/2013]
+1. This version allows the packet delivery ratio to be 58%.
+2. The packet delivery ration will increase if vehicles are allowed to forward 
+packets to other vehicles moving with an opposite direction in a road segment.
+
+[TPD-v1.3.0: 9/27/2013]
+1. I will fix the location of the destination vehicle and run TBD and VADD for
+the performance comparison with TPD.
+
+[TPD-v1.3.0: 10/2/2013]
+1. This version adds the display of the predicted encounter graph and each vehicle's trajectory and
+intersection arrival time.
+
+[TPD-v1.3.1: 10/2/2013]
+1. This version shows the encounter sequence with the predicted encounter graph for debugging.
+
+[TPD-v1.3.2: 10/5/2013]
+1. This version added the display of the encounter edge and offset, time, probability for the given predicted encounter graph for debugging.
+
+[TPD-v1.3.3: 10/5/2013]
+1. This version has succeeded in perfect forwarding with predicted encounter graph based on real-time trajectory sharing.
+  - Vehicles compute their EDR for the next packet carrier.
+
+2. The next step is to show the feasibility of the data forwarding with only the predicted encounter graph of the source vehicle that has received packets from RSU.
+
+[TPD-v1.3.4: 10/11/2013]
+1. This version is implementing the EDR computation by Dynamic Programming.
+  - In tpd.c, TPD_Compute_EDR_For_Encounter_Graph_By_DP(adjacency_list_queue_t *G) 
+  - Check whether count is updated correctly in the above function.
+
+[TPD-v1.3.5: 10/12/2013]
+1. This version has completed the implementation of the EDR computation by Dynamic Programming.
+  - A new function for the EDR computation for an optimal forwarding subsequence is added.
+	double TPD_Compute_Forwarding_Probability_For_Optimal_Forwarding_Subsequence(neighbor_list_queue_node_t *pFirstPosition,
+			int first_position,
+			int candidate_position,
+			int last_position);
+	/* compute the forwarding probability that a packet carrier vehicle 
+		candidate_position can forward its packets to the vehicle 
+		corresponding to candidate_position in the neighbor-list when 
+		the packet carrier vehicle fails to encounter the vehicles 
+		from first_position to candidate_position - 1. */	
+
+[TPD-v1.3.6: 10/12/2013]
+1. This version fixed the logical bug of v1.3.5, such as a wrong computation of EDR for
+an optimal forwarding subsequence.
+
+[TPD-v1.3.7: 10/12/2013]
+1. DP version has worse delivery ratio and delivery delay than Non-DP version for 500 packets.
+ - DP version
+generated_packet_number=500
+delivered_packet_number=464
+discarded_packet_number=36
+packet_delivery_ratio=0.928000
+mean_expected_delivery_delay=0.000000
+mean_actual_delivery_delay=1479.010986
+ratio_of_two_delivery_delays=0.000000
+mean_expected_delivery_delay_standard_deviation=0.000000
+mean_expected_packet_transmission_number=0
+mean_actual_packet_transmission_number=14
+
+### performance result after simulation ###
+200.00  1       0       0.00    1479.01 0.00    0.93    0.00    1314.45 0       14
+
+ - Non-DP version
+generated_packet_number=500
+delivered_packet_number=500
+discarded_packet_number=0
+packet_delivery_ratio=1.000000
+mean_expected_delivery_delay=0.000000
+mean_actual_delivery_delay=1272.782715
+ratio_of_two_delivery_delays=0.000000
+mean_expected_delivery_delay_standard_deviation=0.000000
+mean_expected_packet_transmission_number=0
+mean_actual_packet_transmission_number=16
+
+### performance result after simulation ###
+200.00  1       0       0.00    1272.78 0.00    1.00    0.00    1272.78 0       16
+
+[TPD-v1.3.7: 10/20/2013]
+1. To-do list
+ a) Check the forwarding between packet carrier vehicles at an intersection and a road segment.
+ b) Verify whether TPD_Compute_EDR_For_Encounter_Graph_By_DP() is implemented correctly.
+ c) Implement the data forwarding with the predicted encounter graph in an extention head.
+
+[TPD-v1.3.8: 10/20/2013]
+1. To-do list
+ a) Implement the position update for vehicle's current_pos_in_digraph.
+ b) Check the forwarding between packet carrier vehicles at an intersection and a road segment.
+ c) Verify whether TPD_Compute_EDR_For_Encounter_Graph_By_DP() is implemented correctly.
+ d) Implement the data forwarding with the predicted encounter graph in an extention head.
+
+2. Working source code
+  - util.c
+    2960
+	3263
+  - main.c
+    3033
+  - tpd.c
+    2466
+  - graph-data-struct.h
+    88 
+  - param.h
+    444
+
+[TPD-v1.3.9: 10/24/2013]
+1. This version has updated the positioning in vehicle's digraph.
+
+[TPD-v1.4.0: 10/25/2013]
+1. I let AP compute a predicted encounter graph for a packet and put it
+into the packet's extension head for source routing toward the destination
+vehicle.
+
+2. Forwarding Procedure
+ Step 1: AP forwards the packet to a source vehicle in the predicted encounter graphi called G.
+ Step 2: The source vehicle tries to forward one of its child vehicles in G.
+ Step 3: The child vehicle that received the packet from its parent vehicle
+         will try to forward its packet to one of its child vehicle until
+		 the packet will be delivered to the destination vehicle or
+		 until the packet cannot encounter all of the expected next-hop 
+		 child vehicles after the expected encounter time plus some marginal 
+		 time.
+ Note: The packet will be discarded by the current carrier in the case where
+       the current carrier cannot encounter its child vehicles in G.
+
+3. Code Change
+ - I need to prevent each vehicle from computing EDR to select the next-hop 
+   carrier.
+ - packet has its predicted encounter graph for TPD data forwarding.
+
+[TPD-v1.4.1: 10/26/2013]
+1. This version is working for the packet forwarding with the predicted encounter graph
+embedded into the packet header.
+
+2. Code to add
+ - When a packet is forwarded to the next-hop vehicle, update the pointer to the current packet carrier vehicle in the packet's encounter graph.
+
+3. Problems
+ - As the number of vehicles increases, the delivery ratio becomes worse.
+   This contradicted the expected result because more vehicles will increase the encounter 
+   probability between two arbirary vehicles toward the destination vehicle.
+
+[TPD-v1.4.3: 10/28/2013]
+1. Changes
+ - A next-carrier is selected either at an intersection or in a road segment
+ as a vehicle that satisfies the required delivery ratio (param->tpd_delivery_probability_threshold) and whose EDD is minimum among vehicles with the required EDR ratio.
+ 
+2. Simulation Setting and Results
+ - Settings: 300 vehicles and 200 packets
+
+ - Results
+   1) Greedy Routing with Optimization 
+      . delivery ratio: 100%
+	  . average delivery delay: 1089[sec]
+	  . average transmissions: 28
+   2) Greedy Routing without Optimization
+      . delivery ratio: 90% 
+	  . average delivery delay: 1838[sec]  
+	  . average transmissions: 18 
+   3) Source Routing with Optimization
+      . delivery ratio: 54% 
+	  . average delivery delay: 2142[sec] 
+	  . average transmissions: 4 
+   4) Source Routing without Optimization
+      . delivery ratio: 54% 
+	  . average delivery delay: 2144[sec] 
+	  . average transmissions: 4 
+
+[TPD-v1.4.4: 11/2/2013]
+1. It seems like RSU (i.e., AP) cannot forward its packet(s) to a passign vehicle 
+as a next carrier vehicle toward the destination vehicle because of a low EDR 
+(e.g., 0.18).
+  - output.txt
+<<Predicted Encounter Graph for vehicle(61) at t=7202>>
+
+(vehicle, parent)=(61, -) with (t=7202, p=0.000, EDR=0.180, EDD=2276)
+->[25: t=7155, d=0]->[32: t=7240, d=85]
+...
+<<Predicted Encounter Graph for vehicle(61) at t=7202>>
+
+(vehicle, parent)=(61, -) with (t=7202, p=0.000, EDR=0.184, EDD=2271)
+->[25: t=7155, d=0]->[32: t=7240, d=85]
+...
+<<Predicted Encounter Graph for vehicle(61) at t=7202>>
+
+(vehicle, parent)=(61, -) with (t=7202, p=0.000, EDR=0.184, EDD=2271)
+->[25: t=7155, d=0]->[32: t=7240, d=85]
+...
+<<Predicted Encounter Graph for vehicle(61) at t=7203>>
+
+(vehicle, parent)=(61, -) with (t=7203, p=0.000, EDR=0.432, EDD=1154)
+->[25: t=7155, d=0]->[32: t=7240, d=85]
+...
+...
+<<Predicted Encounter Graph for vehicle(50) at t=7221>>
+                                                 *********
+(vehicle, parent)=(50, -) with (t=7221, p=0.000, EDR=0.983, EDD=1148)
+->[25: t=7182, d=0]->[18: t=7324, d=142]->[11: t=7409, d=85]->[4: t=7466, d=57]
+
+(vehicle, parent)=(191, 50) with (t=7304, p=1.000) and <18, 25: 486>
+->[11: t=7187, d=0]->[18: t=7272, d=85]->[25: t=7414, d=142]->[32: t=7499, d=85]->[39: t=7555, d=57]->[38: t=7669, d=113]->[37: t=7754, d=85]
+
+(vehicle, parent)=(181, 191) with (t=7606, p=0.996) and <38, 39: 1221>
+->[16: t=7164, d=0]->[23: t=7305, d=142]->[30: t=7390, d=85]->[37: t=7447, d=57]->[38: t=7532, d=85]->[39: t=7645, d=113]->[40: t=7730, d=85]->[47: t=7815, d=85]
+
+(vehicle, parent)=(17, 181) with (t=7263, p=1.000) and <23, 16: 866>
+->[30: t=7129, d=0]->[23: t=7214, d=85]->[16: t=7356, d=142]->[9: t=7441, d=85]->[2: t=7497, d=57]->[3: t=7582, d=85]->[4: t=7696, d=113]->[5: t=7781, d=85]->[6: t=7852, d=71]->[7: t=7908, d=57]
+
+(vehicle, parent)=(1, 181) with (t=7357, p=0.905) and <30, 23: 650>
+->[39: t=7061, d=0]->[38: t=7175, d=113]->[37: t=7260, d=85]->[30: t=7316, d=57]->[23: t=7401, d=85]->[16: t=7543, d=142]->[9: t=7628, d=85]
+
+(vehicle, parent)=(1, 174) with (t=7404, p=0.994) and <30, 23: 1398>
+->[39: t=7061, d=0]->[38: t=7175, d=113]->[37: t=7260, d=85]->[30: t=7316, d=57]->[23: t=7401, d=85]->[16: t=7543, d=142]->[9: t=7628, d=85]
+
+(vehicle, parent)=(1, 259) with (t=7442, p=0.545) and <23, 16: 649>
+->[39: t=7061, d=0]->[38: t=7175, d=113]->[37: t=7260, d=85]->[30: t=7316, d=57]->[23: t=7401, d=85]->[16: t=7543, d=142]->[9: t=7628, d=85]
+
+(vehicle, parent)=(1, 89) with (t=7497, p=1.000) and <23, 16: 1526>
+->[39: t=7061, d=0]->[38: t=7175, d=113]->[37: t=7260, d=85]->[30: t=7316, d=57]->[23: t=7401, d=85]->[16: t=7543, d=142]->[9: t=7628, d=85]
+
+(vehicle, parent)=(174, 17) with (t=7304, p=1.000) and <16, 23: 916>
+->[9: t=7173, d=0]->[16: t=7258, d=85]->[23: t=7399, d=142]->[30: t=7484, d=85]->[37: t=7541, d=57]->[38: t=7626, d=85]->[39: t=7739, d=113]->[40: t=7824, d=85]->[41: t=7895, d=71]
+
+(vehicle, parent)=(259, 17) with (t=7347, p=0.932) and <16, 23: 152>
+->[2: t=7197, d=0]->[9: t=7254, d=57]->[16: t=7339, d=85]->[23: t=7481, d=142]->[30: t=7566, d=85]->[37: t=7622, d=57]
+
+(vehicle, parent)=(215, 174) with (t=7340, p=0.869) and <23, 16: 866>
+->[25: t=7082, d=0]->[24: t=7196, d=113]->[23: t=7281, d=85]->[16: t=7422, d=142]
+
+(vehicle, parent)=(89, 215) with (t=7437, p=0.987) and <16, 23: 230>
+->[19: t=7135, d=0]->[18: t=7220, d=85]->[17: t=7333, d=113]->[16: t=7418, d=85]->[23: t=7560, d=142]
+
+##(dst_vehicle)=(1) with (t=7221)##
+->[39: t=7061, d=0]->[38: t=7175, d=113]->[37: t=7260, d=85]->[30: t=7316, d=57]->[23: t=7401, d=85]->[16: t=7543, d=142]->[9: t=7628, d=85]
+
+<<Predicted Encounter Graph for vehicle(50) at t=7221>>
+                                                 *********
+(vehicle, parent)=(50, -) with (t=7221, p=0.000, EDR=0.983, EDD=1148)
+->[25: t=7182, d=0]->[18: t=7324, d=142]->[11: t=7409, d=85]->[4: t=7466, d=57]
+
+(vehicle, parent)=(191, 50) with (t=7304, p=1.000) and <18, 25: 486>
+->[11: t=7187, d=0]->[18: t=7272, d=85]->[25: t=7414, d=142]->[32: t=7499, d=85]->[39: t=7555, d=57]->[38: t=7669, d=113]->[37: t=7754, d=85]
+
+(vehicle, parent)=(181, 191) with (t=7606, p=0.996) and <38, 39: 1221>
+->[16: t=7164, d=0]->[23: t=7305, d=142]->[30: t=7390, d=85]->[37: t=7447, d=57]->[38: t=7532, d=85]->[39: t=7645, d=113]->[40: t=7730, d=85]->[47: t=7815, d=85]
+
+(vehicle, parent)=(17, 181) with (t=7263, p=1.000) and <23, 16: 866>
+->[30: t=7129, d=0]->[23: t=7214, d=85]->[16: t=7356, d=142]->[9: t=7441, d=85]->[2: t=7497, d=57]->[3: t=7582, d=85]->[4: t=7696, d=113]->[5: t=7781, d=85]->[6: t=7852, d=71]->[7: t=7908, d=57]
+
+(vehicle, parent)=(1, 181) with (t=7357, p=0.905) and <30, 23: 650>
+->[39: t=7061, d=0]->[38: t=7175, d=113]->[37: t=7260, d=85]->[30: t=7316, d=57]->[23: t=7401, d=85]->[16: t=7543, d=142]->[9: t=7628, d=85]
+
+(vehicle, parent)=(1, 174) with (t=7404, p=0.994) and <30, 23: 1398>
+->[39: t=7061, d=0]->[38: t=7175, d=113]->[37: t=7260, d=85]->[30: t=7316, d=57]->[23: t=7401, d=85]->[16: t=7543, d=142]->[9: t=7628, d=85]
+
+(vehicle, parent)=(1, 259) with (t=7442, p=0.545) and <23, 16: 649>
+->[39: t=7061, d=0]->[38: t=7175, d=113]->[37: t=7260, d=85]->[30: t=7316, d=57]->[23: t=7401, d=85]->[16: t=7543, d=142]->[9: t=7628, d=85]
+
+(vehicle, parent)=(1, 89) with (t=7497, p=1.000) and <23, 16: 1526>
+->[39: t=7061, d=0]->[38: t=7175, d=113]->[37: t=7260, d=85]->[30: t=7316, d=57]->[23: t=7401, d=85]->[16: t=7543, d=142]->[9: t=7628, d=85]
+
+(vehicle, parent)=(174, 17) with (t=7304, p=1.000) and <16, 23: 916>
+->[9: t=7173, d=0]->[16: t=7258, d=85]->[23: t=7399, d=142]->[30: t=7484, d=85]->[37: t=7541, d=57]->[38: t=7626, d=85]->[39: t=7739, d=113]->[40: t=7824, d=85]->[41: t=7895, d=71]
+
+(vehicle, parent)=(259, 17) with (t=7347, p=0.932) and <16, 23: 152>
+->[2: t=7197, d=0]->[9: t=7254, d=57]->[16: t=7339, d=85]->[23: t=7481, d=142]->[30: t=7566, d=85]->[37: t=7622, d=57]
+
+(vehicle, parent)=(215, 174) with (t=7340, p=0.869) and <23, 16: 866>
+->[25: t=7082, d=0]->[24: t=7196, d=113]->[23: t=7281, d=85]->[16: t=7422, d=142]
+
+(vehicle, parent)=(89, 215) with (t=7437, p=0.987) and <16, 23: 230>
+->[19: t=7135, d=0]->[18: t=7220, d=85]->[17: t=7333, d=113]->[16: t=7418, d=85]->[23: t=7560, d=142]
+
+##(dst_vehicle)=(1) with (t=7221)##
+->[39: t=7061, d=0]->[38: t=7175, d=113]->[37: t=7260, d=85]->[30: t=7316, d=57]->[23: t=7401, d=85]->[16: t=7543, d=142]->[9: t=7628, d=85]
+<R2> TPD_Is_There_Next_Carrier_On_Two_Way_Road_Segment_For_Source_Routing:3476 [7326] current_carrier(50) in (25->18: 1741) encounters next_carrier(191) in (18->25: 559) for destination_vehicle(38->37: 1022).
+<R2> TPD_Is_There_Next_Carrier_On_Two_Way_Road_Segment_For_Source_Routing:3476 [7648] current_carrier(191) in (39->38: 937) encounters next_carrier(181) in (38->39: 880) for destination_vehicle(23->16: 2067).
+
+[TPD-v1.4.5: 11/6/2013]
+1. This version has something wrong for encounter prediction because the encounter offset is larger than the edge length.
+
+  <<Predicted Encounter Graph for vehicle(61) at t=7202>>
+
+  (vehicle, parent)=(61, -) with (t=7202, p=0.000, EDR=0.180, EDD=2276): pos=<25, 32: 162>
+  ->[25: t=7155, d=0]->[32: t=7240, d=85]
+
+  (vehicle, parent)=(233, 61) with (t=7215, p=1.000) and <32, 25: 401>: pos=<33, 32: 1032>
+  ->[33: t=7103, d=0]->[32: t=7188, d=85]->[25: t=7273, d=85]->[24: t=7387, d=113]->[17: t=7528, d=142]
+
+  (vehicle, parent)=(291, 233) with (t=7252, p=1.000) and <25, 32: 562>: pos=<18, 25: 1749>
+  ->[18: t=7074, d=0]->[25: t=7215, d=142]->[32: t=7300, d=85]->[39: t=7357, d=57]->[40: t=7442, d=85]->[41: t=7513, d=71]->[42: t=7569, d=57]
+
+  (vehicle, parent)=(116, 291) with (t=7365, p=0.549) and <40, 39: 1369>: pos=<34, 41: 456>
+  ->[34: t=7160, d=0]->[41: t=7216, d=57]->[40: t=7287, d=71]->[39: t=7372, d=85]->[46: t=7457, d=85]->[45: t=7571, d=113]
+                                                                   ****
+  (vehicle, parent)=(180, 116) with (t=7454, p=0.743) and <45, 46: 2066>: pos=<30, 37: 857>
+  ->[30: t=7121, d=0]->[37: t=7178, d=57]->[38: t=7263, d=85]->[45: t=7348, d=85]->[46: t=7461, d=113]->[47: t=7546, d=85]
+
+2. I am checking whether TPD_Compute_Encounter_Probability() works correctly or not in line 1141 in tpd.c.
+
+[TPD-v1.4.6: 11/8/2013]
+1. There are errors that path_list's weight is not set to have the number of vertices in the path_list in the functions constructing paths.
+  - This made TPD cannot escape the do-while loop in TPD_Construct_Predicted_Encounter_Graph() in lines 304-509.
+  - The functions constructing paths in shortest-path.c are as follows:
+	Make_Path_List(),
+	Make_Path_List_Before_The_Closest_Protection_Point(),
+	Make_Path_List_For_Given_Trajectory(),
+	Make_Forward_Path_List_With_Mobility_List(), and
+	Make_Backward_Path_List_With_Mobility_List().
+ - The remedy is to add the assignment of path_list->weight before return statement in the end of each function:
+	...
+	/* set path_list's length to *path_hop_count + 1 */
+	path_list->weight = *path_hop_count + 1;
+	return path_list;
+	...
+
+[TPD-v1.4.7: 11/8/2013]
+1. I have found the forwarding error in source routing.
+ - The problem is that at some node in the encounter graph, a node is expected to
+  encounter its child node at some time point that is already the past.
+ - Thus, the node cannot encounter its child node.
+ - The following is the example problematic encounter graph:
+
+<<Predicted Encounter Graph for vehicle(50) at t=7217>>
+
+(vehicle, parent)=(50, -) with (t=7217, p=0.000, EDR=0.983, EDD=1178): pos=<25, 18: 0>
+->[25: t=7182, d=0]->[18: t=7324, d=142]->[11: t=7409, d=85]->[4: t=7466, d=57]
+
+(vehicle, parent)=(191, 50) with (t=7304, p=1.000) and <18, 25: 486>: pos=<11, 18: 320>
+->[11: t=7187, d=0]->[18: t=7272, d=85]->[25: t=7414, d=142]->[32: t=7499, d=85]->[39: t=7555, d=57]->[38: t=7669, d=113]->[37: t=7754, d=85]
+                                   ******
+(vehicle, parent)=(181, 191) with (t=7606, p=0.996) and <38, 39: 1221>: pos=<16, 23: 312>
+->[16: t=7164, d=0]->[23: t=7305, d=142]->[30: t=7390, d=85]->[37: t=7447, d=57]->[38: t=7532, d=85]->[39: t=7645, d=113]->[40: t=7730, d=85]->[47: t=7815, d=85]
+                                  ******
+(vehicle, parent)=(17, 181) with (t=7263, p=1.000) and <23, 16: 866>: pos=<30, 23: 1216>
+->[30: t=7129, d=0]->[23: t=7214, d=85]->[16: t=7356, d=142]->[9: t=7441, d=85]->[2: t=7497, d=57]->[3: t=7582, d=85]->[4: t=7696, d=113]->[5: t=7781, d=85]->[6: t=7852, d=71]->[7: t=7908, d=57]
+
+   As shown above, vehicle 181 cannot encounter vehicle 17 at t=7263.
+
+ - The remedy is applied such that the encounter time with a child node should be later
+  than the encounter time with its parent node.
+
+ - This encounter time requirement should be maintained to construct the child nodes in the 
+ encounter graph.
+
+2. This version is working well :-)
+
+[TPD-v1.4.8: 11/8/2013]
+1. There was a mistake to get T_threshold after deleting pQueueNode
+in TPD_Construct_Predicted_Encounter_Graph() in tpd.c:
+ - OLD:
+		DestroyQueueNode(Q->type, (queue_node_t*)pQueueNode);
+		...
+		T_threshold = pQueueNode->key;
+ - NEW:
+		T_threshold = pQueueNode->key;
+		DestroyQueueNode(Q->type, (queue_node_t*)pQueueNode);
+
+
+[TPD-v1.4.9: 11/9/2013]
+1. There is a run-time errror as follows for the command
+"vanet -j 100 -n 100":
+<<Predicted Encounter Graph for vehicle(74) at t=9472>>
+
+(vehicle, parent)=(74, -) with (t=9472, p=0.000, EDR=0.997, EDD=562): pos=<25, 24: 0>
+->[25: t=9454, d=0]->[24: t=9567, d=113]->[23: t=9652, d=85]->[16: t=9794, d=142]
+
+(vehicle, parent)=(60, 74) with (t=9679, p=1.000) and <16, 23: 2075>: pos=<2, 9: 857>
+->[2: t=9416, d=0]->[9: t=9473, d=57]->[16: t=9558, d=85]->[23: t=9699, d=142]->[30: t=9784, d=85]->[37: t=9841, d=57]->[38: t=9926, d=85]->[39: t=10039, d=113]->[40: t=10124, d=85]->[41: t=10195, d=71]->[42: t=10252, d=57]
+
+(vehicle, parent)=(1, 60) with (t=10033, p=0.997) and <39, 38: 157>: pos=<11, 12: 1440>
+->[11: t=9344, d=0]->[12: t=9429, d=85]->[13: t=9499, d=71]->[20: t=9584, d=85]->[27: t=9726, d=142]->[34: t=9811, d=85]->[41: t=9868, d=57]->[40: t=9938, d=71]->[39: t=10023, d=85]->[38: t=10137, d=113]->[37: t=10222, d=85]->[30: t=10278, d=57]->[23: t=10363, d=85]->[16: t=10505, d=142]->[9: t=10590, d=85]
+
+##(dst_vehicle)=(1) with (t=9472): pos=<11, 12: 1440>##
+->[11: t=9344, d=0]->[12: t=9429, d=85]->[13: t=9499, d=71]->[20: t=9584, d=85]->[27: t=9726, d=142]->[34: t=9811, d=85]->[41: t=9868, d=57]->[40: t=9938, d=71]->[39: t=10023, d=85]->[38: t=10137, d=113]->[37: t=10222, d=85]->[30: t=10278, d=57]->[23: t=10363, d=85]->[16: t=10505, d=142]->[9: t=10590, d=85]
+###TPD_Is_There_Next_Carrier_On_Road_Segment_Incident_To_Intersection_For_Source_Routing:2691 [9685] current_carrier(74) in (24->23: 1500) encounters next_carrier(60) in (16->23: 2412) for destination_vehicle(20->27: 530).###
+<I> TPD_Is_There_Next_Carrier_At_Intersection_For_Source_Routing:2478 [9685] current_carrier(74) in (24->23: 1500) encounters next_carrier(60) in (16->23: 2412) for destination_vehicle(20->27: 530).
+TPD_Check_Child_Vehicle_In_Encounter_Graph:3639 [9685] vehicle's id(60) is different from G->carrier_vehicle_gnode's id(74)
+
+2. I need to use TPD_Construct_Predicted_Encounter_Graph_For_Packet() for source routing
+instead of TPD_Construct_Predicted_Encounter_Graph();
+
+[TPD-v1.5.0: 11/8/2013]
+1. There is discrepancy between EDD (i.e., 658) and mean_actual_delivery_delay (i.e., 1397) for "vanet -n 300":
+<<Predicted Encounter Graph for vehicle(103) at t=7891>>
+
+(vehicle, parent)=(103, -) with (t=7891, p=0.000, EDR=0.802, EDD=658): pos=<25, 32: 165>
+->[25: t=7890, d=0]->[32: t=7975, d=85]->[39: t=8032, d=57]->[40: t=8117, d=85]->[41: t=8188, d=71]->[48: t=8273, d=85]
+
+(vehicle, parent)=(87, 103) with (t=8052, p=1.000) and <40, 39: 1172>: pos=<34, 41: 679>
+->[34: t=7866, d=0]->[41: t=7922, d=57]->[40: t=7993, d=71]->[39: t=8078, d=85]->[38: t=8191, d=113]->[37: t=8276, d=85]
+
+(vehicle, parent)=(284, 87) with (t=8252, p=0.988) and <37, 38: 286>: pos=<9, 16: 441>
+->[9: t=7870, d=0]->[16: t=7955, d=85]->[23: t=8097, d=142]->[30: t=8182, d=85]->[37: t=8239, d=57]->[38: t=8324, d=85]->[39: t=8437, d=113]->[40: t=8522, d=85]->[41: t=8593, d=71]
+
+(vehicle, parent)=(1, 284) with (t=8548, p=0.811) and <41, 40: 694>: pos=<10, 11: 332>
+->[10: t=7863, d=0]->[11: t=7976, d=113]->[12: t=8061, d=85]->[13: t=8132, d=71]->[20: t=8217, d=85]->[27: t=8359, d=142]->[34: t=8444, d=85]->[41: t=8500, d=57]->[40: t=8571, d=71]->[39: t=8656, d=85]->[38: t=8769, d=113]->[37: t=8854, d=85]->[30: t=8911, d=57]->[23: t=8996, d=85]->[16: t=9138, d=142]->[9: t=9223, d=85]
+
+##(dst_vehicle)=(1) with (t=7891): pos=<10, 11: 332>##
+->[10: t=7863, d=0]->[11: t=7976, d=113]->[12: t=8061, d=85]->[13: t=8132, d=71]->[20: t=8217, d=85]->[27: t=8359, d=142]->[34: t=8444, d=85]->[41: t=8500, d=57]->[40: t=8571, d=71]->[39: t=8656, d=85]->[38: t=8769, d=113]->[37: t=8854, d=85]->[30: t=8911, d=57]->[23: t=8996, d=85]->[16: t=9138, d=142]->[9: t=9223, d=85]
+<R2> TPD_Is_There_Next_Carrier_On_Two_Way_Road_Segment_For_Source_Routing:3588 [8043] current_carrier(103) in (39->40: 18) encounters next_carrier(87) in (40->39: 1293) for destination_vehicle(11->12: 560).
+<R2> TPD_Is_There_Next_Carrier_On_Two_Way_Road_Segment_For_Source_Routing:3588 [8258] current_carrier(87) in (37->30: 20) encounters next_carrier(284) in (30->37: 833) for destination_vehicle(13->20: 1348).
+<D> VADD_Forward_Packet_To_Destination_Vehicle:4461 [8598] current_carrier(284) in (40->41: 329) encounters destination_vehicle(41->40: 727).
+
+...
+generated_packet_number=1
+delivered_packet_number=1
+discarded_packet_number=0
+packet_delivery_ratio=1.000000
+mean_expected_delivery_delay=0.000000
+mean_actual_delivery_delay=1397.881348
+
+2. There is delivery error for "vanet -n 100".
+
+3. There is a change in adjacency_list_queue_t to let the graph node pointer be accessed by vehicle id, using bitmap_gnodes[vehicle->id-1]:
+	/** structure for adjacency_list queue */
+	typedef struct _adjacency_list_queue_t {
+		queue_type_t type; //queue type
+		int size;
+		adjacency_list_queue_node_t head;
+		boolean *bitmap; //bitmap to tell whether the graph node for vehicle with vid (index+1) exists in the graph G
+		int bitmap_size; //size of bitmap
+		********************************************
+		adjacency_list_queue_node_t **bitmap_gnodes; //pointers to graph nodes for vehicles
+		adjacency_list_queue_node_t *src_vehicle_gnode; //graph node for src_vehicle
+		adjacency_list_queue_node_t *dst_vehicle_gnode; //graph node for dst_vehicle
+		adjacency_list_queue_node_t *carrier_vehicle_gnode; //graph node for the current carrier vehicle
+	} adjacency_list_queue_t;
+
+[TPD-v1.5.2: 1/4/2014]
+1. This version is working well with #vehicles=100 and #packets=1.
+	- The vehicle arrival estimation per intersection is performed on the basis of vehicle's
+	actual speed rather than param's vehicle speed.
+	- The newly added function for the vehicle arrival estimation by vehicle's actual speed is
+	compute_arrival_time_mean_and_standard_deviation_for_path_node_by_vehicle_actual_speed() in 
+	util.c.
+
+[TPD-v1.5.3: 1/6/2014]
+1. I found the packet failure of 100% with #vehicles=100 and #packets=1.
+	- The reason is that communication_packet_ttl was set to 2000 [sec] and
+	 the next packet carrier will show up at the RSU after the lifetime greater
+	 than 2000 [sec].
+	- The fix is to set communication_packet_ttl to 3000 [sec].
+	- Another fix is to let some vehicles move along the main streets that are
+	the cross road ways passing through the intersection (i.e., intersection-25)
+	with the RSU.
+
+[TPD-v1.5.4: 1/6/2014]
+1. I found the packet failure of 100% with #vehicles=200 and #packets=10.
+2. Why are there multiple Predicted Encounter Graph for vehicle(93) at t=8230?
+	- I blocked the printing of predicted encounter graph at intersections and road segments using macro constants in common.h such as
+	TPD_DISPLAY_PREDICTED_ENCOUNTER_GRAPH_FOR_INTERSECTION_FLAG,
+	TPD_DISPLAY_PREDICTED_ENCOUNTER_GRAPH_FOR_INTERSECTION_ROAD_SEGMENT_FLAG,
+	TPD_DISPLAY_PREDICTED_ENCOUNTER_GRAPH_FOR_ONEWAY_ROAD_SEGMENT_FLAG, and
+	TPD_DISPLAY_PREDICTED_ENCOUNTER_GRAPH_FOR_TWOWAY_ROAD_SEGMENT_FLAG.
+
+3. There is an error in encounter estimation because there is a big discrepancy between
+  the predicted encounter time/location and the actual encounter time/location.
+
+[TPD-v1.5.5: 1/7/2014]
+1. This version needs to fix the vehicle arrival time at each intersection along vehicle trajectory by considering the intersection waiting time.
+	- In the previous version, the intersection waiting time is not counted for the vehicle arrival time at each intersection.
+2. This version counts the intersection waiting time for the vehicle intersection arrival time.
+	- I added the mean and variance of vehicle_think_time as intersection waiting time at intersection area in param.c:
+		* param->vehicle_mean_think_time = param->vehicle_think_time/2;
+		* param->vehicle_think_time_variance = pow(param->vehicle_think_time, 2)/12;
+	- I added the mean and variance of vehicle think time to edge_travel_time and edge_travel_time_variance, respectively in compute_arrival_time_mean_and_standard_deviation_for_path_node_by_vehicle_actual_speed() in util.c:
+		* edge_travel_time += param->vehicle_mean_think_time;
+		* edge_travel_time_variance += param->vehicle_think_time_variance;
+
+[TPD-v1.5.6: 1/11/2014]
+1. In this version, Source-routing-based TPD outperforms Greedy-routing-based TPD.
+2. Also, the packet loss issus seems gone.
+3. As baselines, I will extend VADD and TBD, considering the mobility of the destination vehicle.
+	- When a packet arrives at the target intersection, it is locally broadcasted to the road segments incident to the target intersection.
+	- Multiple target points can be selected by VADD and TBD for better delivery ratio with more expensive transmission cost.
+
+[TPD-v1.5.7: 1/15/2014]
+1. We will extend VADD and TBD in the case where the packet destination is the moving destination vehicle.  
+	- Target point selection for a mobile destination
+		= Select an intersection such that the expected packet arrival time is less than the expected destination vehicle arrival time.
+
+	- Target point selection for a fixed destination
+		= Put a static destination vehicle with one-intersection trajectory.
+
+2. We will implement Epidemic Routing as a smart flooding scheme that is used as a baseline to show the greatest delivery ratio with the most expensive transmission cost.
+
+[TPD-v1.5.8: 1/21/2014]
+1. This version constructs the set of road network graphs for each target intersection.
+
+[TPD-v1.5.9: 1/23/2014]
+1. This version supports the selection of a target point for the destination vehicle using the target point selection algorithm in TSF.
+
+[TPD-v1.6.0: 1/23/2014]
+1. This version has implememted the data forwarding by VADD and TBD for V2V data delivery.
+
+[TPD-v1.6.1: 1/24/2014]
+1. We are stilling implementing the functions for the data forwarding by VADD and TBD for V2V data delivery.
+  - The forwarding part in AP to the next-carrier vehicle is almost implemented.
+
+[TPD-v1.6.2: 1/24/2014]
+1. This has completed the initial versions of VADD and TBD.
+  - The delivery ratios of them are much lower than TPD.
+  - The delivery ratio of TBD is higher than that of VADD.
+
+[TPD-v1.6.3: 1/28/2014]
+1. This version has started the implementation of Epidemic Routing protocol.
+  - communication_packet_hop_limit field is added to parameter_t in order to
+  limit to the number of packet copies for controlled broadcast in Epidemic Routing.
+  - Let vehicle's latest_packet_ptr point to the latest packet from AP in terms of packet_id or generation_time.
+  - When a vehicle has multiple packets, it will use the latest packet for the target point for the destination vehicle. 
+  - A packet carrier duplicates its packets at every intersection to the cluster head of a cluster at each outgoing directed edge, considering the packet hop limit.
+
+[TPD-v1.6.4: 1/30/2014]
+1. This version makes DestroyPacketQueueNode() be corrected to delete predicted encounter graph by using DestroyQueueNode().
+
+[TPD-v1.6.5: 1/31/2014]
+1. This version is implementing the data forwarding for Epidemic Routing by duplicating a packet to multiple copies at each intersection.
+  - communication_packet_hop_limit will be used to limit the packet copy operation.
+    . packet_duplication_count is used to count the number of packet duplications in packet_queue_node_t
+  - VADD_Get_Initial_Minimum_Neighbor_EDD(param, vehicle) returns 0 for Epidemic Routing. We need to check this.
+
+[TPD-v1.6.6: 2/6/2014]
+1. In Epidemic Routing, packet carrier forwards its packet copies to the cluster heads at each intersection along its vehicle trajectory.
+  - EPIDEMIC_Perform_Packet_Dissemination_At_Intersection(): a function to packet dissemination at intersection.
+  - EPIDEMIC_Forward_Packet_Copy_To_Next_Carrier(): a function to forward packet copies to next_carrier.
+
+2. packet_copy_count for global_packet_queue_node_t is maintained.
+  - packet_copy_count for packet copies to delete the global packet queue is updated so that packet_copy_count increases (or decreases) as one packet copy is generated (or deleted).
+
+3. Make a bitmap in the destination vehicle (called packet_bitmap) to see which packets are already received by the destiation vehicle in terms of packet sequence number. 
+  - This packet_bitmap is used especially for Epidemic Routing to count the number of packets received without duplicate receptions.
+
+[TPD-v1.6.7: 2/10/2014]
+1. Epidemic Routing has been implemented with the following limitations:
+  - The number of packet copies is not limited by packet's packet_duplication_count.
+
+[TPD-v1.6.8: 2/11/2014]
+1. In Epidemic Routing, this version is working for the packet duplication in road segments as well as at intersections.
+  - This operation will allow for the fast data delivery to the destination vehicle.
+
+[TPD-v1.6.9: 2/11/2014]
+1. This version is correcting the subfunctions of VADD_Is_There_Next_Carrier_On_Road_Segment() in either one-way road segment or two-way road segment such that V2V data forwarding can work well.
+
+[TPD-v1.7.0: 2/20/2014]
+1. This version has implemented packet dissemination in the middle of road segments in epidemic.c.
+  - EPIDEMIC_Perform_Packet_Dissemination_On_Road_Segment()
+
+[TPD-v1.7.0: 2/25/2014]
+1. We need to finish implementing VADD_Is_There_Next_Carrier_On_Two_Way_Road_Segment() by referring to VADD_Is_There_Next_Carrier_On_One_Way_Road_Segment().
+  - Handle V2V and Epidemic Routing.
+
+[TPD-v1.7.4: 3/1/2014]
+1. I have implemented Epidemic Routing such that a packet carrier forwards its packet copies to another vehicle or cluster head in both road segments.
+  - The forwarding performance is worse than TPD -> Check why this happens!
+
+2. I need to implement the packet duplication check to make sure that a vehicle cannot give its packet copies to another vehicles with the same packet copies.
+  - Compare the packet lists to make sure that each packet carrier does not have the multiple copies of a packet.
+
+[TPD-v1.7.5: 3/14/2014]
+1. This version checks the duplication of packet copies to reduce the number of packet copies generated by EPIDEMIC.
+  - This checking is performed by IsPacketCopy_In_PacketQueue() in EPIDEMIC_Forward_Packet_Copy_To_Next_Carrier().
+
+[TPD-v1.7.6: 3/14/2014]
+1. We need to check whether the first packet copy determines the delivery delay in EPIDEMIC.
+  - The delivery delay of EPIDEMIC is longer than that of TPD.
+    -> We expect EPIDEMIC to have shorter delivery delay than TPD.
+
+[TPD-v1.7.6: 3/15/2014]
+1. In Cluster mode, the current packet carrier forwards its packet copies to the convoy head in its cluster or another cluster moving in the opposite road segment or at an intersection.
+  - We need to let each cluster member have the packet copies from the current packet carrier in order to get the same delivery performance as TPD.
+
+[TPD-v1.7.7: 3/17/2014]
+1. We need to let modify VADD_Is_There_Next_Carrier_On_Two_Way_Road_Segment() such that both next_carrier_candidate_1 and next_carrier_candidate_2 are used for the packet copy in Epidemic Routing.
+  - In line 3876 in vadd.c.
+
+[TPD-v1.7.8: 3/18/2014]
+1. Though a packet carrier around an intersection tries to forward its packet copies to vehicles in both outgoing edges and incoming edges, the performace is not improved more than v1.7.7.
+
+[TPD-v1.7.9: 3/24/2014]
+1. Let AP forward its packets to vehicles passing through the intersection for the AP and delete the original packets.
+
+2. The EDD by VADD is overestimated compared with the EAD for the destination vehicle.
+
+3. For TPD, there is a case where more vehicles make less delivery ratio as follows:
+  - vanet -f 3 -n 100 -j 500: packet_delivery_ration=0.996 with mean_actual_delivery_delay=1401.201050
+  - vanet -f 3 -n 200 -j 500: packet_delivery_ration=0.590 with mean_actual_delivery_delay=781.613953
+
+[TPD-v1.8.0: 3/25/2014]
+1. This verion deletes the original packets in AP's packet queue when AP delivers its packet copies to the neighboring vehicles.
+
+[TPD-v1.8.1: 3/26/2014]
+1. In TPD, the packet carrier can deliver its packet copies to all of its next-hop carrier candidates in order to increase the delivery probability.
+  - This is the multicast over the encounter graph from source vehicle (or AP) towards the destination vehicle nodes (i.e., duplicate destination vehicles).
+
+[TPD-v1.8.1: 3/27/2014]
+1. In TPD, the default TTL of 3000 makes a packet expire at AP frequently:
+  - communication_packet_ttl=3000
+
+2. We need to use a longer TTL such as 10000:
+  - communication_packet_ttl=10000
+
+3. In TPD, with a longer TTL, the delivery ratio is improved, but in some cases, there is packet loss due to the inaccurate rendezvous estimation.
+  - We need to consider the encounter time considering the waiting time of uniform distribution at intersections.
+
+[TPD-v1.8.1: 4/5/2014]
+1. For TPD, the packet generation time is reset to the delivery time from AP to the next carrier vehicle in VADD_Forward_Packet_From_AP_To_Next_Carrier() in vadd.c:
+  ...
+	for(i = 0; i < size; i++)
+	{
+		pPacketNode = (packet_queue_node_t*) Dequeue((queue_t*)AP->packet_queue); //dequeue a packet placed at AP's packet queue front
+
+#if 1 /* [ */
+		/* reset packet generation time to the delivery start time from AP to the next carrier */
+#endif /* ] */
+
+		/* compute the packet's lifetime to check whether the packet expires */
+		lifetime = current_time - pPacketNode->generation_time; //compute the packet's lifetime
+  ...
+
+2. There is a lot of packet loss with the following arguments for TPD:
+  - vanet -f 3 -j 1000
+  ...
+  generated_packet_number=1000
+  generated_packet_copy_number=1000
+  delivered_packet_number=752
+  discarded_packet_number=191
+  packet_delivery_ratio=0.752000
+  mean_expected_delivery_delay=0.000000
+  mean_actual_delivery_delay=1259.214600
+  ratio_of_two_delivery_delays=0.000000
+  mean_expected_delivery_delay_standard_deviation=0.000000
+  mean_expected_packet_transmission_number=0
+  mean_actual_packet_transmission_number=1
+
+  - vanet -f 3 -n 150 -j 1000
+  //Even with more vehicles, the delivery ratio becomes worse -> What is the reason of this problem?
+  ...
+  generated_packet_number=1000
+  generated_packet_copy_number=1000
+  delivered_packet_number=592
+  discarded_packet_number=333
+  packet_delivery_ratio=0.592000
+  mean_expected_delivery_delay=0.000000
+  mean_actual_delivery_delay=1616.062378
+  ratio_of_two_delivery_delays=0.000000
+  mean_expected_delivery_delay_standard_deviation=0.000000
+  mean_expected_packet_transmission_number=0
+  mean_actual_packet_transmission_number=2
+
+[TPD-v1.8.3: 4/7/2014]
+1. In TPD predicted encounter graph, if we allow a vehicle to be used multiple times, how can we do it with a predicted encounter graph with a limited size. 
+
+2. As the more vehicles are used in TPD, the delivery delay becomes longer.
+  - For 100 vehicles: vanet -f 3 -n 100 -j 100
+	mean_actual_delivery_delay=395.906281
+
+  - For 200 vehicles: vanet -f 3 -n 200 -j 100
+	mean_actual_delivery_delay=508.158997
+
+  - For 300 vehicles: vanet -f 3 -n 300 -j 100
+	mean_actual_delivery_delay=563.685669
+
+[TPD-v1.8.4: 4/10/2014]
+1. For n=400, the destination vehicle is expected to encounter the packet carrier vehicle in a negative edge offset, such as <29, 22: -38>.
+  - In the result, the destination vehicle encounters the packet carrier vehicle in a positive edge offset, such as <29, 22: 88>.
+
+<<Predicted Encounter Graph for vehicle(300) at t=7337>>
+
+(vehicle, parent)=(300, -) with (t=7337, p=0.000, EDR=0.716, EDD=661): pos=<25, 26: 91>
+->[25: t=7350, d=0]->[26: t=7438, d=88]->[27: t=7512, d=74]->[34: t=7601, d=88]
+
+(vehicle, parent)=(254, 300) with (t=7429, p=0.728) and <26, 25: 46>: pos=<27, 26: 0>
+->[27: t=7342, d=0]->[26: t=7426, d=85]->[25: t=7527, d=100]->[24: t=7659, d=132]->[23: t=7759, d=100]->[22: t=7828, d=69]->[15: t=7992, d=164]
+
+(vehicle, parent)=(283, 254) with (t=7872, p=0.998) and <15, 22: 1879>: pos=<12, 11: 235>
+->[12: t=7322, d=0]->[11: t=7411, d=89]->[10: t=7528, d=117]->[9: t=7617, d=89]->[8: t=7678, d=61]->[15: t=7768, d=89]->[22: t=7913, d=145]->[29: t=8002, d=89]->[36: t=8063, d=61]
+
+(vehicle, parent)=(347, 254) with (t=7885, p=0.994) and <15, 22: 1684>: pos=<5, 12: 577>
+->[5: t=7302, d=0]->[12: t=7362, d=59]->[11: t=7448, d=87]->[10: t=7562, d=114]->[9: t=7649, d=87]->[8: t=7708, d=59]->[15: t=7795, d=87]->[22: t=7936, d=141]->[29: t=8022, d=87]->[36: t=8082, d=59]->[43: t=8168, d=87]
+                                                      *************
+(vehicle, parent)=(1, 283) with (t=7998, p=0.985) and <29, 22: -38>: pos=<49, 48: 175>
+->[49: t=7338, d=0]->[48: t=7401, d=63]->[47: t=7478, d=77]->[46: t=7570, d=92]->[45: t=7691, d=121]->[44: t=7783, d=92]->[43: t=7845, d=63]->[36: t=7937, d=92]->[29: t=8000, d=63]->[22: t=8092, d=92]->[15: t=8242, d=150]->[8: t=8333, d=92]->[1: t=8396, d=63]
+
+(vehicle, parent)=(1, 347) with (t=8008, p=0.716) and <29, 22: 146>: pos=<49, 48: 175>
+->[49: t=7338, d=0]->[48: t=7401, d=63]->[47: t=7478, d=77]->[46: t=7570, d=92]->[45: t=7691, d=121]->[44: t=7783, d=92]->[43: t=7845, d=63]->[36: t=7937, d=92]->[29: t=8000, d=63]->[22: t=8092, d=92]->[15: t=8242, d=150]->[8: t=8333, d=92]->[1: t=8396, d=63]
+
+##(dst_vehicle)=(1) with (t=7337): pos=<49, 48: 175>##
+->[49: t=7338, d=0]->[48: t=7401, d=63]->[47: t=7478, d=77]->[46: t=7570, d=92]->[45: t=7691, d=121]->[44: t=7783, d=92]->[43: t=7845, d=63]->[36: t=7937, d=92]->[29: t=8000, d=63]->[22: t=8092, d=92]->[15: t=8242, d=150]->[8: t=8333, d=92]->[1: t=8396, d=63]
+###TPD_Is_There_Next_Carrier_On_Road_Segment_Incident_To_Intersection_For_Source_Routing:2751 [7414] current_carrier(300) in (25->26: 1500) encounters next_carrier(254) in (27->26: 1083) for destination_vehicle(48->47: 403).###
+<I> TPD_Is_There_Next_Carrier_At_Intersection_For_Source_Routing:2520 [7414] current_carrier(300) in (25->26: 1500) encounters next_carrier(254) in (27->26: 1083) for destination_vehicle(48->47: 403).
+<R2> TPD_Is_There_Next_Carrier_On_Two_Way_Road_Segment_For_Source_Routing:3664 [7885] current_carrier(254) in (22->15: 128) encounters next_carrier(283) in (15->22: 2186) for destination_vehicle(43->36: 1068).
+<D> VADD_Forward_Packet_To_Destination_Vehicle:5343 [7976] current_carrier(283) in (22->29: 1247) 
+                              ************
+encounters destination_vehicle(29->22: 88).
+
+2. With more vehicles, the delivery delay can increase with the command (vanet -n 100|200|300|400).
+  -----------------------------
+  |       |  delay  |  #hops  | 
+  -----------------------------
+  | n=100 | 262     | 2       |
+  | n=200 | 857     | 4       |
+  | n=300 | 564     | 3       |
+  | n=400 | 639     | 4       |
+  -----------------------------
+
+[TPD-v1.8.5: 4/19/2014]
+1. The negative offset problem in the encountered edge is resolved in TPD_Compute_Encounter_Probability() in tpd.c:
+  1) line 1261
+    - OLD
+  	  if(flag1 == TRUE)
+
+    - NEW
+	  if(vehicle1_path_current_edge_tail == tail_1)
+
+  2) line 1299
+    - OLD
+	  if(flag2 == TRUE)
+
+	- NEW
+	  if(vehicle2_path_current_edge_tail == tail_2)
+
+
+  3) line 1321
+    - OLD
+	  t_2 = length1*unit_length_travel_time;
+
+	- NEW
+	  t_2 = length2*unit_length_travel_time;
+
+[TPD-v1.8.6: 4/23/2014]
+1. It seems like there is a mismatch between predicted node arrival time and actual node arrival time.
+  - run "vanet -n 200"
+  - destination vehicle is expected to arrive at intersection 29 at time 10029, but
+    it actually arrives at intersection 29 at time 9990.
+  - Why does this mismatch happen?
+
+[TPD-v1.8.6: 5/1/2014]
+1. This version has fixed the coding error that does not count the vehicle_think_time before the new travel start.
+  - This error leads to the mismatch between the expected edge arrival time and the actual edge arrival time.
+
+[TPD-v1.8.7: 5/3/2014]
+1. For "vanet -n 200 -j 2", there is no Predicted Encounter for the second packet.
+[21600.00] 
+: EDD Table has been updated!
+<D> VADD_Forward_Packet_To_Destination_Vehicle:5344 [22268] current_carrier(157) in (21->14: 449) encounters destination_vehicle(14->21: 1033).
+<D> VADD_Forward_Packet_To_Destination_Vehicle:5387 [22268] current_carrier(157) in (21->14: 449) cannot deliver packet(id=1, lifetime=6791, TTL=3000) to destination_vehicle(14->21: 1033).
+<D> VADD_Forward_Packet_To_Destination_Vehicle:5487 [22268] current_carrier(157) in (21->14: 449) delivers 0 packets among 1 packets in Q to destination_vehicle(14->21: 1033).
+
+2. Investigate the following in vadd.c:
+VADD_Forward_Packet_To_Destination_Vehicle(): line 5385
+
+[TPD-v1.8.8: 5/6/2014]
+1. Taehwan Hwang has joined the TPD project for the simulation.
+
+[TPD-v1.8.9: 5/6/2014]
+1. This version fixed run-time error (i.e., crash) due to the initialization of sn_table's
+number with a garbage value after the end of main().
+  - In shortest-path.c: line 42
+    ap_table->number = 0;
+    sn_table->number = 0;
+
+[TPD-v1.9.0: 5/20/2014]
+1. In this version, the location of routine which check whether packet copy is already in the packet queue of next carrier has fixed.
+   It should be checked before checking packet hop limit.
+  - To apply this change set, define the preprocessor 'EPIDEMIC_20140520' in front of 'epidemic.c' like below.
+    #define EPIDEMIC_20140520
+  - In this change set, the changed functions are like below
+    EPIDEMIC_Forward_Packet_Copy_To_Next_Carrier  
+    EPIDEMIC_Forward_Packet_Copy_From_AP_To_Next_Carrier
+
+
+ㅍㄹ 

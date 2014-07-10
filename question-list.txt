@@ -1,0 +1,14 @@
+Queustion List for VANET Project
+
+[10/18/2008]
+1. Why is the event generation of TBD different form that of VADD in one linear road network?
+  - We can generate 11 packets in the road network of A<--->B.
+  - The 11th packet's generation times are different in both cases.
+
+[10/23/2008]
+1. Can a following vehicle overtake the convoy head in variable vehicle speed?
+  - Yes. In this case, we need to update the convoy head with the following vehicle.
+  - Thus, in convoy_update(), for every update for each vehicle, we need to update, the convoy head, convoy leader and convoy tail.
+
+2. EDD has something wrong since a vehicle with its offset 792 has the same EDD (i.e., 0) as with another vehicle with its offset 156.
+  - We need to check the computation of EDD.
