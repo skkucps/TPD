@@ -1136,6 +1136,12 @@ void init_parameter(struct parameter *param, char* conf_file)
 					enum_flag = TRUE;
 					break;
 				}
+				else if (strcmp(token, "VANET_FORWARDING_TADB") == 0)
+				{
+					value = VANET_FORWARDING_TADB;
+					enum_flag = TRUE;
+					break;
+				}
 				else if(strcmp(token, "VANET_FORWARDING_EPIDEMIC") == 0)
 				{
 					value = VANET_FORWARDING_EPIDEMIC;

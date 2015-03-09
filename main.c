@@ -1022,6 +1022,7 @@ int main(int argc, char** argv)
 	{
 		case VANET_FORWARDING_VADD:
 		case VANET_FORWARDING_EPIDEMIC:	
+		case VANET_FORWARDING_TADB:
 			param.vehicle_vanet_edd_model = VANET_EDD_PER_INTERSECTION_MODEL;
 			break;
 
