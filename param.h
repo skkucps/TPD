@@ -268,7 +268,7 @@ typedef enum _vanet_forwarding_scheme_t
   VANET_FORWARDING_TADB = 7   //TaDB
 } vanet_forwarding_scheme_t;
 
-#define NUMBER_OF_VANET_FORWARDING_SCHEME 7 
+#define NUMBER_OF_VANET_FORWARDING_SCHEME 8 
 
 /* vanet forwarding scheme name */
 #define STRING_FOR_VANET_FORWARDING_UNKNOWN "UNKNOWN_SCHEME"
