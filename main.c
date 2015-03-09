@@ -3326,7 +3326,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 										__FUNCTION__, __LINE__,
 										(float)current_time, vehicle->id);*/
 							}
-#endif /* ] */
+#endif /* ] */   
 							if(param->vanet_forwarding_scheme == VANET_FORWARDING_TPD) //if-4.2.3.2
 							{
 								//printf("@@@@@@ TPDITNCAIF AP\n");	
