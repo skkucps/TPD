@@ -296,7 +296,7 @@ void vehicle_insert(struct struct_vehicle* vehicle)
 boolean vehicle_delete(int id)
 { //delete a vehicle node corresponding to id from vehicle_list
 	struct struct_vehicle* ptr;
-
+	printf("free vd\n");
 	for(ptr = vehicle_list.next; ptr != &vehicle_list; ptr = ptr->next)
 	{
 		if(id == ptr->id)
@@ -336,7 +336,7 @@ void free_vehicle_list()
 { //free vehicle list along with the allocated memory
 	struct struct_vehicle* ptr; //pointer to vehicle node
 	struct struct_vehicle* q; //pointer to the deleted vehicle node
-
+	//printf("free vl\n");
 	ptr = vehicle_list.next;
 	while(ptr != &vehicle_list)
 	{
@@ -1069,7 +1069,7 @@ int log_vanet(VANET_LOG_TYPE type, double current_time, packet_queue_node_t *p, 
 	{
 	case VANET_LOG_PACKET_AP_ARRIVAL: //log the data forwarding to Internet access point on VANET into VANET logging file
 	  p->actual_delivery_delay = p->destination_arrival_time - p->generation_time; //compute packet delivery delay
-          printf("delivery_delay %.1f = arrival_time %.1f - generation_time %.1f\n", p->actual_delivery_delay,p->destination_arrival_time,p->generation_time);
+          printf("AP delivery_delay %.1f = arrival_time %.1f - generation_time %.1f\n", p->actual_delivery_delay,p->destination_arrival_time,p->generation_time);
 	  p->delivery_delay_difference = p->actual_delivery_delay - p->expected_delivery_delay; 
 	
 #ifdef __LOG_LEVEL_VANET_PACKET_AP_ARRIVAL__
@@ -2826,7 +2826,9 @@ void store_sensor_location_into_file(edge_queue_t *Er, char* filename)
 #ifdef __DEBUG_LEVEL_0__
 		printf(msg);
 #endif
+		
 		/* release memory */
+		printf("free msg\n");
 		free(msg); //if NUMBER_STRING_LEN is small for numbers, this could make heap error here.
 	}
 
@@ -3084,48 +3086,48 @@ void update_vehicle_trajectory(struct_vehicle_t* vehicle, double arrival_time, s
 	{
 		if(vehicle->role == VEHICLE_ROLE_AP_VEHICLE)
 		{
-		  if(IsVertexInTrafficTable(ap_table_for_Gr, traffic_source) == FALSE)
-		  {
-		    index = smpl_random(0, ap_table_for_Gr->number-1);
-		    strcpy(traffic_destination, ap_table_for_Gr->list[index].vertex);
-		  }
-		  else
-                  {
-		    index = smpl_random(0, dst_table_for_Gr->number-1);
-                    strcpy(traffic_destination, dst_table_for_Gr->list[index].vertex);
-                  }
+			if(IsVertexInTrafficTable(ap_table_for_Gr, traffic_source) == FALSE)
+			{
+				index = smpl_random(0, ap_table_for_Gr->number-1);
+				strcpy(traffic_destination, ap_table_for_Gr->list[index].vertex);
+			}
+			else
+            {
+				index = smpl_random(0, dst_table_for_Gr->number-1);
+                strcpy(traffic_destination, dst_table_for_Gr->list[index].vertex);
+            }
 		}
 		else
-                {
-		  index = smpl_random(0, dst_table_for_Gr->number-1);
-                  strcpy(traffic_destination, dst_table_for_Gr->list[index].vertex);
-                }
+        {
+			index = smpl_random(0, dst_table_for_Gr->number-1);
+            strcpy(traffic_destination, dst_table_for_Gr->list[index].vertex);
+        }
 
 		if(strcmp(traffic_source, traffic_destination) == 0)
 		//make sure that traffic destination is different from traffic source
-		  continue; 
+			continue; 
 
-	        if(param->vehicle_path_length_distribution == EQUAL)
-	        {
-	          path_list = Make_Path_List(path_table, traffic_source, traffic_destination, &path_hop_count);
-	          //path_list = Make_Path_List_Before_The_Closest_Protection_Point(path_table, traffic_source, traffic_destination, dst_table_for_Gr);
-	        }
-	        else
-	        {
-		  src = atoi(traffic_source);
-		  dst = atoi(traffic_destination);
-		  path_list = Random_Path_Make_Path_List(src, dst, Gr, Gr_size, Dr_move, Mr_move, param, &path_hop_count);
+	    if(param->vehicle_path_length_distribution == EQUAL)
+	    {
+	        path_list = Make_Path_List(path_table, traffic_source, traffic_destination, &path_hop_count);
+	        //path_list = Make_Path_List_Before_The_Closest_Protection_Point(path_table, traffic_source, traffic_destination, dst_table_for_Gr);
+	    }
+	    else
+	    {
+			src = atoi(traffic_source);
+			dst = atoi(traffic_destination);
+			path_list = Random_Path_Make_Path_List(src, dst, Gr, Gr_size, Dr_move, Mr_move, param, &path_hop_count);
 		  //path_list = Random_Path_Make_Path_List_Before_The_Closest_Protection_Point(src, dst, Gr, Gr_size, Dr_move, Mr_move, param, dst_table_for_Gr);
-	        }
+	    }
 
 		if(path_hop_count >= param->vehicle_path_minimum_hop_count)
 		//let the path_hop_count have at least a minimum hop count
-		  break; 
+			break; 
 		else
 		{
 		  /* delete vehicle's path-list */
-		  Free_Path_List(path_list);
-                  path_list = NULL;
+			Free_Path_List(path_list);
+            path_list = NULL;
 		}
 	} while(1);				
 
@@ -4161,10 +4163,10 @@ void store_evaluation_result_into_file(FILE *fp_1, FILE *fp_2, parameter_t *para
 
   fprintf(fp_2, "%f\t%u\t%u\t%f\t%f\t%u",   (float)test_param, seed, target_algorithm, (float)sensor_network_lifetime, (float)average_detection_time, number_of_detected_vehicles);
 
-#ifdef __DEBUG_INTERACTIVE_MODE__
+//#ifdef __DEBUG_INTERACTIVE_MODE__
   printf("\n### performance result after simulation ###\n");
   printf("%f\t%u\t%u\t%f\t%f\t%u\n", (float)test_param, seed, target_algorithm, (float)sensor_network_lifetime, (float)average_detection_time, number_of_detected_vehicles);
-#endif
+//#endif
 }
 
 void store_vanet_evaluation_result_into_file(FILE *fp, parameter_t *param, unsigned int seed, packet_delivery_statistics_t *packet_delivery_statistics, struct_graph_node *G)
@@ -4302,7 +4304,7 @@ void store_vanet_evaluation_result_into_file(FILE *fp, parameter_t *param, unsig
 		(float)difference_between_two_average_convoy_lengths,
 		(float)0.0);
 
-#ifdef __DEBUG_INTERACTIVE_MODE__
+//#ifdef __DEBUG_INTERACTIVE_MODE__
 	printf("%.2f\t%u\t%u\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",
 		(float)test_param,
 		seed,
@@ -4313,7 +4315,7 @@ void store_vanet_evaluation_result_into_file(FILE *fp, parameter_t *param, unsig
 		(float)packet_delivery_statistics->packet_delivery_ratio,
 		(float)difference_between_two_average_convoy_lengths,
 		(float)0.0);
-#endif
+//#endif
     break;
 
   default:
@@ -4331,7 +4333,7 @@ void store_vanet_evaluation_result_into_file(FILE *fp, parameter_t *param, unsig
 	packet_delivery_statistics->mean_expected_packet_transmission_number, 
 	packet_delivery_statistics->mean_actual_packet_transmission_number);
 
-#ifdef __DEBUG_INTERACTIVE_MODE__
+//#ifdef __DEBUG_INTERACTIVE_MODE__
     printf("%.2f\t%u\t%u\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%u\t%u\t%d\n", 
 	(float)test_param, 
 	seed, 
@@ -4345,7 +4347,7 @@ void store_vanet_evaluation_result_into_file(FILE *fp, parameter_t *param, unsig
 	packet_delivery_statistics->mean_expected_packet_transmission_number, 
 	packet_delivery_statistics->mean_actual_packet_transmission_number,
         packet_delivery_statistics->min_delivery_delay_difference);
-#endif
+//#endif
     break;
   }
 }
@@ -6820,16 +6822,16 @@ boolean show_trajectory_and_arrival_time_for_vehicle(int vid,
 	int intersection = 0; //intersection in road network
 	double arrival_time = 0; //expected arrival time
 
-	printf("\nvid=%d: ", vid);
+	printf("\n%d:", vid);
 	for(path_ptr = path_list->next; path_ptr != path_list;)
 	{
 		intersection = atoi(path_ptr->vertex);
 		arrival_time = path_ptr->expected_arrival_time;
 
 		if(path_ptr->next != path_list)
-			printf("%d(%.0f)->", intersection, arrival_time);
+			printf("%d,%.0f;", intersection, arrival_time);
 		else
-			printf("%d(%.0f)\n", intersection, arrival_time);
+			printf("%d,%.0f;", intersection, arrival_time);
 
 		path_ptr = path_ptr->next;
 	}

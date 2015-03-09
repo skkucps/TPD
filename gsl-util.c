@@ -813,6 +813,7 @@ double  GSL_TPD_Function_Integral_For_Gamma_Distribution(tpd_opt_params_t *param
 	if(status)
 	{
 		result = 0;
+		printf("status error\n");
 	}
 
 	gsl_set_error_handler(old_handler); //restore the old error handler
@@ -820,7 +821,7 @@ double  GSL_TPD_Function_Integral_For_Gamma_Distribution(tpd_opt_params_t *param
 	while(status)
 	{
 		status = gsl_integration_qags(&F, interval_start, interval_end, 0, relerr, limit, w, &result, &error);
-		relerr *= 1.1; //increased tolerance (relative error)
+		relerr *= 1.1 //increased tolerance (relative error)
 		if(status)
 		{
 #if 0 /* [ */
@@ -828,7 +829,7 @@ double  GSL_TPD_Function_Integral_For_Gamma_Distribution(tpd_opt_params_t *param
 					__FUNCTION__, __LINE__,
 					relerr);
 #endif /* ] */
-
+			//printf("status error\n");
 			result = 0;
 			break;
 		}

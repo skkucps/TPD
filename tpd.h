@@ -11,6 +11,14 @@
 
 #include "queue.h"
 
+void test_gamma2();
+
+/* taehwan 20140731 */
+double TPD_Get_Predicted_Encounter_Time(int vehicle_id);
+
+/* taehwan 20140802 */
+void TPD_Set_Margin_Time(int margin);
+
 /** The Operations of Predicted Encounter Graph */
 int TPD_Allocate_Predicted_Encounter_Graph(parameter_t *param, struct_vehicle_t *vehicle);
 //allocate the memory of a predicted encounter graph for vehicle
@@ -213,6 +221,8 @@ int TPD_Perform_BFS_For_Encounter_Graph(adjacency_list_queue_t *G, boolean displ
 
 int TPD_Print_Vehicle_Trajectory(struct_vehicle_t *vehicle);
 //print vehicle's trajectoy (i.e., path_list from the current tail node to the last node) along with arrival time
+void TPD_Print_Vehicle_Forward_Area_Compared(struct_vehicle_t *comparision_vehicle, struct_vehicle_t *current_vehicle);
+void TPD_Print_Vehicle_Encounter_Area_Compared(struct_vehicle_t *comparision_vehicle, struct_vehicle_t *current_vehicle);
 
 boolean TPD_Is_There_Next_Carrier_On_Road_Segment(parameter_t *param, 
 		double current_time, 

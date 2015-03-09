@@ -11,7 +11,7 @@
 #include "vadd.h"
 #include "tpd.h" //TPD_Find_GraphNode_In_EncounterGraph()
 
-#define EPIDEMIC_20140520
+//#define EPIDEMIC_20140520
 //#define EPIDEMIC_20140602
 
 int EPIDEMIC_Perform_Packet_Dissemination_At_Intersection_For_AP(parameter_t *param,
@@ -61,6 +61,7 @@ int EPIDEMIC_Perform_Packet_Dissemination_At_Intersection_For_AP(parameter_t *pa
 
 		if(flag == TRUE && next_carrier != NULL)
 		{
+			printf("AP forward to %d\n",next_carrier->id);
 			/* forward the copies of the packets carried by vehicle to next_carrier */
 			packet_copy_cluster_number++;
 #if 0 /* [ */
@@ -115,16 +116,16 @@ int EPIDEMIC_Perform_Packet_Dissemination_At_Intersection_For_AP(parameter_t *pa
 #if 1 /* [ */
 	if(total_forward_count > 0)
 	{
-
-//#ifdef EPIDEMIC_20140602
-//		printf("Intersection AP(%d) forwards count %d \n",
-//			AP->id, total_forward_count);
-//#else
-//		printf("%s:%d AP(%d) forwards its packet copies with total_forward_count %d\n",
-//				__FUNCTION__, __LINE__,
-//				AP->id, total_forward_count);
-//#endif
-
+/*
+#ifdef EPIDEMIC_20140602
+		printf("%.2f Intersection AP(%d) forwards count %d \n",
+			current_time,AP->id, total_forward_count);
+#else
+		printf("%s:%d AP(%d) forwards its packet copies with total_forward_count %d\n",
+				__FUNCTION__, __LINE__,
+				AP->id, total_forward_count);
+#endif
+*/
 		/* delete the original packets in AP's packet_queue because AP forwarded its packets 
 		 * to the neighboring vehicles.
 		 * Note that this discard of the original packets is not counted as packet loss. */
@@ -209,9 +210,9 @@ int EPIDEMIC_Perform_Packet_Dissemination_At_Intersection(parameter_t *param,
 					/* check the validity of convoy queue Q */
 					if(Q == NULL)
 					{
-						//printf("%s:%d the convoy queue of next_vehicle(%d) is NULL",
-						//		__FUNCTION__, __LINE__,
-						//		next_carrier->id);
+						printf("%s:%d the convoy queue of next_vehicle(%d) is NULL",
+								__FUNCTION__, __LINE__,
+								next_carrier->id);
 						exit(1);
 					}
 
@@ -250,17 +251,19 @@ int EPIDEMIC_Perform_Packet_Dissemination_At_Intersection(parameter_t *param,
 #if 1 /* [ */
 	if(total_forward_count > 0)
 	{
-//#ifdef EPIDEMIC_20140602
-//		printf("Intersection vehicle(%d) forwards count %d pos(%s,%s)\n",	
-//			vehicle->id, 
-//			total_forward_count,
-//			vehicle->current_pos_in_digraph.tail_node,
-//			vehicle->current_pos_in_digraph.head_node);
-//#else
-//		printf("%s:%d vehicle(%d) forwards its packet copies with total_forward_count %d\n",
-//				__FUNCTION__, __LINE__,
-//				vehicle->id, total_forward_count);
-//#endif
+/*
+#ifdef EPIDEMIC_20140602
+		printf("Intersection vehicle(%d) forwards count %d pos(%s,%s)\n",	
+			vehicle->id, 
+			total_forward_count,
+			vehicle->current_pos_in_digraph.tail_node,
+			vehicle->current_pos_in_digraph.head_node);
+#else
+		printf("%s:%d vehicle(%d) forwards its packet copies with total_forward_count %d\n",
+				__FUNCTION__, __LINE__,
+				vehicle->id, total_forward_count);
+#endif
+*/
 	}
 #endif /* ] */
 
@@ -744,6 +747,7 @@ int EPIDEMIC_Perform_Packet_Dissemination_On_Road_Segment(parameter_t *param, do
 #if 1 /* [ */
 	if(total_forward_count > 0)
 	{
+/*
 #ifdef EPIDEMIC_20140602
 		printf("time %.2f, vehicle(%d) on road forwards to vehicle(%d) count %d pos(%s,%s)\n",			         current_time,
 			vehicle->id, 
@@ -752,10 +756,11 @@ int EPIDEMIC_Perform_Packet_Dissemination_On_Road_Segment(parameter_t *param, do
 			vehicle->current_pos_in_digraph.enode->tail_node, 
 			vehicle->current_pos_in_digraph.enode->head_node);
 #else
-		//printf("%s:%d vehicle(%d) forwards its packet copies with total_forward_count %d\n",
-		//		__FUNCTION__, __LINE__,
-		//		vehicle->id, total_forward_count);
+		printf("%s:%d vehicle(%d) forwards its packet copies with total_forward_count %d\n",
+				__FUNCTION__, __LINE__,
+				vehicle->id, total_forward_count);
 #endif
+*/
 	}
 #endif /* ] */
 

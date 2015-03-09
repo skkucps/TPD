@@ -302,4 +302,8 @@ boolean VADD_Is_Vehicle_Moving_On_Packet_Trajectory(struct_vehicle_t *vehicle, p
 double VADD_Get_Initial_Minimum_Neighbor_EDD(parameter_t *param, struct_vehicle_t *vehicle);
 //get the initial minimum neighboring EDD for vehicle according to param's data_forwarding_mode and vehicle_vanet_forwarding_type
 
+/* taehwan 20140712 checking range */
+boolean isLogOn();
+void setLogOnOff(boolean onoff);
+
 #endif

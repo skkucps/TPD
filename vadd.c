@@ -3395,6 +3395,8 @@ boolean VADD_Is_Within_AP_Communication_Range(parameter_t *param, struct_vehicle
   int node_id = 0; //graph node id
   MOVE_TYPE move_type = vehicle->move_type; //movement type to indicate which direction is taken by the vehicle on the undirectional edge 
 
+	//printf("VADD_IS_WITHIN_AP_COMMUNICAION_RANGE\n");
+
   if(move_type == MOVE_FORWARD)
   {
     /* check whether or not the vehicle's head_node of the directional edge is one of access points */
@@ -3526,6 +3528,11 @@ boolean VADD_Is_Within_Destination_Vehicle_Communication_Range(parameter_t *para
     }
   }
 
+  /* taehwan 20140712 checking communication range*/
+  //if (isLogOn() == TRUE)
+  //{
+  //  printf("communication range : %s\n",(result == TRUE ? "TRUE":"FALSE"));
+  //}
   return result;
 }
 
@@ -5324,6 +5331,8 @@ void VADD_Forward_Packet_To_AP(parameter_t *param, double current_time, struct_v
   }
 }
 
+int g_expired_meeting_count = 0;
+
 void VADD_Forward_Packet_To_Destination_Vehicle(parameter_t *param, double current_time, struct_vehicle_t *carrier_vehicle, struct_vehicle_t *destination_vehicle, packet_delivery_statistics_t *packet_delivery_stat)
 { //vehicle forwards its packet(s) to the destination vehicle pointed by destination_vehicle and the log for the packet(s) is written into the packet logging file.
   int i = 0; //index for for-loop
@@ -5380,8 +5389,25 @@ void VADD_Forward_Packet_To_Destination_Vehicle(parameter_t *param, double curre
     /* compute the packet's lifetime to check whether the packet expires */
     lifetime = current_time - pPacketNode->generation_time; //compute the packet's lifetime
 
+
+	/* taehwan 20140731 */
+	int vehicle_id = carrier_vehicle->id;
+	double predicted_time = TPD_Get_Predicted_Encounter_Time(vehicle_id);
+	int isExpired = 0;
+
+	/* taehwan 20140828 Expired Meeting in TPD MUST be considered as discarded.*/
+	if (param->vanet_forwarding_scheme == VANET_FORWARDING_TPD)
+	{
+		printf("Predicted Time of %d is %.2f / Arrived at %.2f\n",vehicle_id, predicted_time, current_time);
+		
+		if (predicted_time + 500 < current_time)
+		{
+			printf("\nEXPIRED MEETING!!! %d\n\n",++g_expired_meeting_count);
+			//isExpired = 1;
+		}
+	}
     /** check whether packet's lifetime is greater than the predefined packet TTL */
-    if(lifetime > pPacketNode->ttl) //if-1.1
+    if(lifetime > pPacketNode->ttl || isExpired == 1 ) //if-1.1
     //if(lifetime > param->communication_packet_ttl) //if-1.1
     {
 #if TPD_SOURCE_ROUTING_DESTINATION_VEHICLE_FORWARDING_TRACE_FLAG /* [*/
@@ -5515,6 +5541,8 @@ int VADD_Forward_Packet_From_AP_To_Next_Carrier(parameter_t *param, double curre
 	size = AP->packet_queue->size;
 	if(size == 0)
 		return 0;
+
+	printf(" VADD_Forward_Packet_From_AP_To_Next_Carrier \n");
 
 	for(i = 0; i < size; i++)
 	{
@@ -10035,3 +10063,18 @@ double VADD_Get_Initial_Minimum_Neighbor_EDD(parameter_t *param, struct_vehicle_
 
 	return min_neighbor_EDD;
 }
+
+/* taehwan 20140712 checking range */
+
+boolean m_isLogOn = FALSE;
+
+boolean isLogOn()
+{
+	return m_isLogOn;
+}
+
+void setLogOnOff(boolean onoff)
+{
+	m_isLogOn = onoff;
+}
+

@@ -9,7 +9,7 @@
 	3. [07/14/2010] this version supports the data forwarding in the middle of road segments among vehicles moving in the opposite directions.
 
 */
-
+ 
 #include "stdafx.h"
 #include "main.h"
 #include "util.h"
@@ -23,8 +23,11 @@
 #include "mobility.h"
 #include "tpd.h"
 #include "epidemic.h"
+#include "steiner-tree.h"
 
 #include <time.h>
+
+//#define BSMA_20150227 0
 
 #ifdef __GSL_LIBRARY_SUPPORT__
 #include "gsl-util.h" //gsl utility funtions
@@ -36,10 +39,319 @@
 
 #include <stdlib.h> //srand48()
 
+/* taehwan 20140723 */
+#include <fcntl.h>
+#include <sys/stat.h>
+
+/* taehwan 20140719 */
+#define VEHICLE_COUNT_MAX 3000
+#define INTERSECTION_COUNT 50
+int g_vehicle_current_segment_location[VEHICLE_COUNT_MAX]; // [vehicle_id]{intersection_head}
+int g_vehicle_color[VEHICLE_COUNT_MAX];
+int g_segment_visit_count[INTERSECTION_COUNT][4];
+int g_intersection_visit_count[INTERSECTION_COUNT]={0,};
+double g_current_time;
+int g_gnuplot_option=0;
+
+int* get_intersection_visit_count()
+{
+	int i,j;
+	for(i=1;i<INTERSECTION_COUNT;i++)
+	{
+		g_intersection_visit_count[i] = 0;
+		for(j=0;j<4;j++)
+		{
+		
+			g_intersection_visit_count[i] += g_segment_visit_count[i][j];
+		}
+	}
+	return g_intersection_visit_count;
+}
+
+FILE* g_gnuplotpipe = NULL;
+
+
+void print_intersection_visit_count()
+{
+	int* visit_count = NULL;
+	visit_count = get_intersection_visit_count();
+	
+	if (visit_count == NULL)
+		return;
+
+	int i;
+	for(i=1;i<INTERSECTION_COUNT;i++)
+	{
+		printf("%7d ",visit_count[i]);
+		if ( i%7 == 0)
+			printf("\n");
+	}
+
+	fprintf(g_gnuplotpipe,"set output\n");
+
+	pclose(g_gnuplotpipe);
+}
+
+int g_write_interval = 500;
+int g_write_count = 0;
+
+
+/* taehwan 20140723 */
+void gnuplot_intersection_visit_count()
+{
+
+	g_write_count++;			
+
+	int* visit_count = NULL;
+	visit_count = get_intersection_visit_count();
+
+	int max = 0;
+
+	if (visit_count == NULL)
+		return;
+	int i;
+
+	for (i=1;i<INTERSECTION_COUNT;i++)
+	{
+		if (visit_count[i] > max)
+			max = visit_count[i];
+	}
+
+	if (g_write_count == 1) 
+	{
+		g_gnuplotpipe = popen("gnuplot -p","w");
+	}
+
+	if (g_gnuplotpipe != NULL)
+	{
+		if (g_write_count == 1)
+		{
+			fprintf(g_gnuplotpipe,"unset key\n");
+		    fprintf(g_gnuplotpipe,"set title \"Intersection Visit Count\"\n");
+			fprintf(g_gnuplotpipe,"set tic scale 0\n");
+			fprintf(g_gnuplotpipe,"set palette rgbformula -7,2,-7\n");
+			fprintf(g_gnuplotpipe,"set cblabel \"Visit Count\"\n");
+			fprintf(g_gnuplotpipe,"set xrange[-0.5:6.5]\n");
+			fprintf(g_gnuplotpipe,"set yrange[-0.5:6.5]\n");
+			fprintf(g_gnuplotpipe,"set view map\n");
+		}
+		fprintf(g_gnuplotpipe,"set cbrange [0:%d]\n",max);
+			
+
+		if (g_write_count % g_write_interval != 0)
+			return;
+		fprintf(g_gnuplotpipe,"splot '-' matrix with image\n");
+	
+		for(i=1;i<INTERSECTION_COUNT;i++)
+		{
+			fprintf(g_gnuplotpipe,"%d ",visit_count[i]);
+
+			if ( i%7 == 0)
+				fprintf(g_gnuplotpipe,"\n");
+		}	
+
+		fprintf(g_gnuplotpipe,"e\ne\n");
+	}
+}
+
+double g_x;
+double g_y;
+int g_direction;
+
+/* taehwan 20140724 */
+void convertDigraphToCoordinate(int head,int tail,double offset,double length)
+{
+	// head to tail range 1~49
+	// 1) coordinate
+	//      a]x = ((head-1) % 7) + 1
+	//      b]x = floor( (head+6) / 7 )
+	// 2) d = offset / edge_length 
+	//      a]head - tail == -1 : x += d
+	//      b]head - tail == 1  : x -= d
+	//      c]head - tail < -1  : y += d
+	//      d]head - tail > 1   : y -= d
+	g_x = ( (head-1) % 7 ) + 1;
+	g_y = floor( (head+6) / 7 );
+
+	double d = offset / length;
+
+	if (head-tail == -1)
+	{
+		g_direction = 1;
+		g_x += d;
+	}
+	else if (head-tail == 1)
+	{
+		g_direction = 3;
+		g_x -= d;
+	}
+	else if (head-tail < - 1)
+	{
+		g_direction = 2;
+		g_y += d;
+	}
+	else if (head-tail > 1)
+	{
+		g_direction = 4;
+		g_y -= d;
+	}
+	else
+		printf("error %d,%d\n",head,tail);
+}
+
+double g_vehicle_point[VEHICLE_COUNT_MAX][3]={0,};
+int g_vehicle_have_packet[VEHICLE_COUNT_MAX]={0,};
+
+/* taehwan 20140725 */
+int g_next_carrier = 0;
+
+/* taehwan 20140728 */
+boolean g_is_packet_forwarding = FALSE;
+boolean g_gnuplot_init = FALSE;
+
+int g_gnuplot_packet_forwarding_delay = 1000;
+
+/* taehwan 20140725 */
+void gnuplot_vehicle_point(double currenttime)
+{
+	int i;
+
+	g_write_count++;
+
+	char buf[28];
+
+	int interval = g_write_interval;
+
+	if (g_write_count == 1) 
+	{
+		g_gnuplotpipe = popen("gnuplot -p","w");
+	}
+
+//	if (g_current_time < 8400 || g_current_time > 9200)
+//		return;
+
+	if (g_gnuplotpipe != NULL)
+	{
+		if (g_gnuplot_init == FALSE)
+		{
+			g_gnuplot_init = TRUE;
+
+			printf("Init GNUPlot\n");
+			/* make gif routine. annotate below if you want realtime visualizatoin.*/
+			//fprintf(g_gnuplotpipe,"set term gif animate\n");
+			//fprintf(g_gnuplotpipe,"set output \"trace_log.gif\"\n");
+			/* end of gif routine */
+			fprintf(g_gnuplotpipe,"reset\n");
+			fprintf(g_gnuplotpipe,"set xrange[0:8]\n");
+			fprintf(g_gnuplotpipe,"set yrange[0:8]\n");
+			fprintf(g_gnuplotpipe,"set grid\n");
+			fprintf(g_gnuplotpipe,"set title \"TPD\"\n");
+			fprintf(g_gnuplotpipe,"unset key\n");
+			fprintf(g_gnuplotpipe,"unset colorbox\n");
+			fprintf(g_gnuplotpipe,"set palette model RGB\n");
+			fprintf(g_gnuplotpipe,"set palette model RGB defined (0 \"black\", 1 \"blue\", 2 \"green\", 3 \"red\")\n");
+
+		}
+
+		if (g_is_packet_forwarding == TRUE)
+			interval = g_gnuplot_packet_forwarding_delay;
+
+		if (g_write_count % interval != 0)
+			return;
+
+		
+		fprintf(g_gnuplotpipe,"set title \"TPD t=%.0f\"\n",g_current_time);
+		fprintf(g_gnuplotpipe,"plot '-' using 2:3:1:4 with labels textcolor palette\n");
+
+		g_vehicle_color[1] = 3;
+
+		g_vehicle_have_packet[1] = 3;
+/*
+		g_vehicle_have_packet[111] = 2;
+		g_vehicle_have_packet[50] = 2;
+		g_vehicle_have_packet[107] = 2;
+		g_vehicle_have_packet[142] = 2;
+*/
+		//g_vehicle_have_packet[26] = 2;
+		//g_vehicle_have_packet[156] = 2;
+		//g_vehicle_have_packet[43] = 2;
+		//g_vehicle_have_packet[95] = 2;
+
+		boolean isPacketForwarding = FALSE;
+
+		for(i=1;i<VEHICLE_COUNT_MAX;i++)
+		{
+
+			int temp_color;
+			
+			temp_color = g_vehicle_color[i];
+			
+			//if (g_vehicle_point[i][0] == 4 && g_vehicle_point[i][1] == 4)
+			//{
+			//	g_vehicle_color[i] = 1;
+			//}
+
+			temp_color = g_vehicle_color[i];
+
+			temp_color = g_vehicle_have_packet[i];
+
+			if (g_vehicle_point[i][0] == 0)
+			{
+				break;
+			}
+			
+			double x = 0;
+			double y = 0;
+
+			x = g_vehicle_point[i][0];
+			y = g_vehicle_point[i][1];
+
+			double ROAD_OFFSET = -0.1;
+			switch((int)g_vehicle_point[i][2])
+			{
+				case 1:
+					y += ROAD_OFFSET;
+					break;
+				case 2:
+					x -= ROAD_OFFSET;
+					break;
+				case 3:
+					y -= ROAD_OFFSET;
+					break;
+				case 4:
+					x += ROAD_OFFSET;
+					break;
+			}
+
+			fprintf(g_gnuplotpipe,"%d %2.8f %2.8f %d\n",
+				i,
+				x,
+				y,
+				temp_color);
+
+			if (g_vehicle_have_packet[i] == 1)
+			{
+				isPacketForwarding = TRUE;
+				if (i != 26) g_vehicle_have_packet[26] = 2; 	
+                		if (i != 156) g_vehicle_have_packet[156] = 2;
+				if (i != 43) g_vehicle_have_packet[43] = 2; 
+                		if (i != 95) g_vehicle_have_packet[95] = 2;
+			}
+		}
+		if (isPacketForwarding == TRUE)
+			g_is_packet_forwarding = TRUE;
+		else
+			g_is_packet_forwarding = FALSE;
+
+		fprintf(g_gnuplotpipe,"e\n");
+	}
+}
+
 /** run simulation */
 
 int main(int argc, char** argv)
 {
+	//test_gamma2();
 	char graph_file[BUF_SIZE]; //graph configuration file is specified in conf_file
 	char output_file[BUF_SIZE]; //output file name
 	char output_file_1[BUF_SIZE] = OUTPUT_FILE_1; //output file of simulation results in the format of text (.txt)
@@ -267,10 +579,22 @@ int main(int argc, char** argv)
 #ifdef _LINUX_
 	opterr = 0; //we don't want getopt() to write an error message to stderr.
 
-	while((c = getopt(argc, argv, "a:b:c:d:e:f:g:h:i:j:k:l:m:n:o:p:q:r:s:t:u:v:w:x:y:z:A:B:C:D:E:F:G:H:I:J:K:L:M:N:O:P:R:S:T:U:V:W:X:Y:Z:")) != -1) //c: means that option character c has an argument
+	while((c = getopt(argc, argv, "#:@:*:a:b:c:d:e:f:g:h:i:j:k:l:m:n:o:p:q:r:s:t:u:v:w:x:y:z:A:B:C:D:E:F:G:H:I:J:K:L:M:N:O:P:Q:R:S:T:U:V:W:X:Y:Z:")) != -1) //c: means that option character c has an argument
 	{
 	    switch(c)
 	    {
+			case '#':
+				g_gnuplot_packet_forwarding_delay = atoi(optarg);
+				break;
+			case '@':
+				g_write_interval = atoi(optarg); 
+				break;
+			case '*': //gnuplot
+				// 0 - no gnuplot
+				// 1 - visit count
+				// 2 - vehicle movement
+				g_gnuplot_option = atoi(optarg);
+				break;
 		    case 'a': //Comparison target type
                 comparison_target_type = (comparison_target_type_t)atoi(optarg);
                 flag_comparison_target_type = TRUE;
@@ -482,6 +806,9 @@ int main(int argc, char** argv)
 	    	    flag_tpd_encounter_graph_optimization_flag = TRUE;
 	        	break;
 
+			case 'Q':
+				TPD_Set_Margin_Time(atoi(optarg));
+				break;
 		    case 'P':
 		        vehicle_vanet_target_point_search_space_type = (vanet_target_point_search_space_type_t)atoi(optarg);
 				flag_vehicle_vanet_target_point_search_space_type = TRUE;
@@ -539,6 +866,7 @@ int main(int argc, char** argv)
 	}
 #endif
 
+	printf("param_conf_file = \"%s\"\n",param_conf_file);
 	/** check the data forwarding mode to select parameter configuration file */
 	if(flag_data_forwarding_mode == TRUE && flag_param_conf_file == FALSE)
 	{
@@ -1098,6 +1426,30 @@ int main(int argc, char** argv)
 	//printf("\nHit return to finish the simulation\n");
         //fgetc(stdin);
 #endif
+	/* taehwan 20140719 */
+	/*
+	int i,j,k;
+	for(i=49;i>=7;i=i-7)
+	{
+		for(k=0;k<3;k++)
+		{
+			for(j=i-6;j<=i;j++)
+			{
+				if (k==0)
+					printf("%5d %5d %5d ",0,g_segment_visit_count[j][0],0);
+				else if (k==2)
+					printf("%5d %5d %5d ",0,g_segment_visit_count[j][2],0);
+				else 
+					printf("%5d %5d %5d ",g_segment_visit_count[j][3],j,g_segment_visit_count[j][1]);
+			}
+			printf("\n");
+		}
+		printf("\n");
+	}
+	*/
+	
+	/* taehwan 20140722 */
+	//print_intersection_visit_count();
 
 	return 0;
 }
@@ -1370,6 +1722,18 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 
 	int target_point_number = 0; //the number of target points
 	target_point_queue_t TPQ; //target point queue containing target points towards which packets will be sent
+	
+#ifdef BSMA_20150227
+	// taehwan 20150227 
+	target_point_queue_t FTPQ; //feasible target point queue containing target points towards which packets will be sent to destination vehicles in multicast
+	edge_set_queue_t ESQ; //edge set queue for multicast tree T after filtering out redundant target points
+	/** Initialize Feasible Target Point Queue FTPQ */
+	InitQueue((queue_t*) &FTPQ, QTYPE_TARGET_POINT);
+
+	/** Initialize edge set queue ESQ containing edges in a multicast tree */
+	InitQueue((queue_t*)&ESQ, QTYPE_EDGE_SET);
+#endif
+
 	target_point_queue_node_t *pTargetPoint = NULL; //pointer to a target point queue node
 	int global_packet_id = 0; //a globally unique packet id set to packet's id
 
@@ -1377,6 +1741,8 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 	int forward_count = 0; //count for forwarded packets
 	int discard_count = 0; //count for discarded packets
 
+	/* taehwan 20140712 checking range flag */
+	bool isInRange = FALSE;
 	/*************************************************************************************************/
 
 	/** @for debugging */
@@ -1736,6 +2102,15 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 	/** actual simulation procedure including task scheduling */
 	do
 	{
+		/* taehwan 20140828 terminate when packet delivery number >= packet count */
+		if (param->communication_packet_maximum_number <= 
+				packet_delivery_statistics.delivered_packet_number + packet_delivery_statistics.discarded_packet_number) 
+		{
+			printf("********************************************************\n");
+			printf("Simulation Terminate : All Packet Forwarding COMPLETED!!\n");
+			printf("********************************************************\n");
+			break;
+		} 
 		
 		//printf("SIMULATION ITERATION NUMBER is %d\n",iteration_counter);
 		if(param->simulation_mode == TIME)
@@ -1783,7 +2158,8 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 /********** VANET STATES ***********/
 			case VANET_EDD_UPDATE: 
 				/** process the vehicular traffic statistics for building both the forwarding probability and the Expected Delivery Delay (EDD) */
-				current_time = smpl_time();
+				current_time = smpl_time();			
+			
 
 #ifdef __DEBUG_LEVEL_VANET_EDD_UPDATE__
                                 printf("[%.2f] VANET_EDD_UPDATE: EDD Table has been updated!\n", (float)current_time);
@@ -1802,7 +2178,8 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 					}
 					else
 					{
-						if(ap_table_for_Gr.number > 1) //the case where the number of APs is more than 1
+						//printf("\n*******  VANET_EDD_EDR_UPDATE : AP number = %d********* \n\n",ap_table_for_Gr.number);
+						if(ap_table_for_Gr.number > 1) //the case where the number of APs is more than 1						
 						{ //Even for multiple APs, it is enough to update the EDDs for one AP because the update is related to all-pairs-shortest path tables D, S, and M in param.vanet_information_table; this update lets the individual vehicles be able to construct a convoy on the same road segment by letting them set their EDD towards the intersection having the AP of index 0 
 							VADD_Compute_EDD_And_EDD_SD_Based_On_Shortest_Path_Model(param, Gr, Gr_size, &DEr, &ap_table_for_Gr, 0, FALSE); //compute the Expected Delivery Delay (EDD) and Expected Delivery Delay Standard Deviation (EDD_SD) based on the shortest path model with graph Gr and directional edge queue DEr.
 							//VADD_Compute_EDD_And_EDD_SD_Based_On_Shortest_Path_Model_For_Multiple_APs(param, Gr, Gr_size, &DEr, &ap_table_for_Gr); //For the Multiple-AP road network, compute the Expected Delivery Delay (EDD) and Expected Delivery Delay Standard Deviation (EDD_SD) based on the shortest path model with graph Gr and directional edge queue DEr.
@@ -1814,7 +2191,8 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 
 						}
 						else
-						{ //the case where the number of APs is one
+						{ //the case where the number of APs is one						
+							
 							VADD_Compute_EDD_And_EDD_SD_Based_On_Shortest_Path_Model(param, Gr, Gr_size, &DEr, &ap_table_for_Gr, 0, FALSE); //compute the Expected Delivery Delay (EDD) and Expected Delivery Delay Standard Deviation (EDD_SD) based on the shortest path model with graph Gr and directional edge queue DEr; this update lets the individual vehicles be able to construct a convoy on the same road segment by letting them set their EDD towards the intersection having the AP of index 0 
 
 							VADD_Compute_EDC_And_EDC_SD_Based_On_Shortest_Path_Model(param, Gr, Gr_size, &DEr, &ap_table_for_Gr, 0, FALSE); //compute the Expected Delivery Cost (EDC) and Expected Delivery Cost Standard Deviation (EDC_SD) based on the stochastic model with graph Gr and directional edge queue DEr.
@@ -2069,7 +2447,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 
 					/* register the pointer to the destination vehicle into param->dst_vnode */
 					param->vanet_table.dst_vnode = vehicle;
-
+				   
 				  }
 				  else
 				  { //non-destination vehicle
@@ -2174,7 +2552,6 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 				    delay = 0.0;
 				    schedule(VEHICLE_CHECK, delay, id);
 				    //perform the rest of the codes in this event
-
 				    /** schedule the packet generation in packet generating vehicles */
 				    if((param->data_forwarding_mode == DATA_FORWARDING_MODE_UPLOAD) && (packet_vehicle_count < param->vehicle_packet_generating_entity_number))
 				    {
@@ -2448,11 +2825,14 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 				/** set up a new path for the vehicle's movement */
 				update_vehicle_trajectory(vehicle, current_time, &dst_table_for_Gr, &ap_table_for_Gr, param, &path_table, Gr, Gr_size, &Er, Dr_move, Mr_move);
 
+				/* taehwan 20140829 */
+				g_vehicle_color[vehicle->id] = 0;
+
 				/** register the vehicle's movement into the directional edge queue's vehicle_movement_list */
 				if(param->vehicle_vanet_acl_measurement_flag)
 				  register_vehicle_movement(param, vehicle, current_time, Gr);
 
-                                if(flag_packet_log)
+                if(flag_packet_log)
 				{
 				  if(param->vehicle_vanet_acl_measurement_flag != TRUE)
 				    register_vehicle_movement(param, vehicle, current_time, Gr);
@@ -2621,6 +3001,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 
 
 			case VEHICLE_MOVE:
+
 				current_time = smpl_time();
 
 				vehicle = vehicle_search(id);
@@ -2632,7 +3013,6 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 #endif
 				  exit(1);
 				}
-
 #if TPD_VEHICLE_MOBILITY_TRACE_FLAG
 				/** TRACE vehicle mobility */
 				if((current_time > 9781) && (vehicle->id == 86 || vehicle->id == 168))
@@ -2648,6 +3028,13 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 				}
 				/***************************/
 #endif
+				/*if ( (vehicle->id == 22 || vehicle->id == 1) &&
+						(current_time > 23680 && current_time < 23730 ) )
+				{
+					setLogOnOff(TRUE);
+				} else {
+					setLogOnOff(FALSE);
+				}*/
 
 				/** reset intersection_flag to FALSE when vehicle is leaving from an intersection */
 				intersection_visit_flag = FALSE;
@@ -2862,7 +3249,8 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 					/** check whether this vehicle reaches an Internet access point and returns the pointer to the graph node corresponding to the access point through *destination_ap; Note that when the vehicle arrives at the location of the Internet access point, it can forward its packets, not using the remote transmission within the communication range; this is because we want to make the actual link delay in one segment close to the expected delivery delay */
 
 					flag = VADD_Is_Within_AP_Communication_Range(param, vehicle, Gr, Gr_size, &ap_table_for_Gr, &ap_graph_node); //@Note: This line should be modified in order to support multiple APs
-
+					//if (vehicle->id==1 || vehicle->id==22)
+					//	printf("Range Check : vehicle id=%d, %d\n",vehicle->id,flag);
 					if(flag) //if-4.2
 					{
 						if(param->data_forwarding_mode == DATA_FORWARDING_MODE_UPLOAD) //if-4.2.1
@@ -2901,7 +3289,14 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								if(flag == TRUE)
 								{
 									VADD_Forward_Packet_From_AP_To_Next_Carrier(param, current_time, pAP, next_carrier, &packet_delivery_statistics, &discard_count); //AP forwards its packet(s) to the neighboring vehicle and the log for the packet(s) is written into the packet logging file.
-	
+									
+									/* taehwan 20140730 */
+									// check packet ttl has expired
+									if (discard_count > 0)
+									{
+										printf("TTL EXPIRED AT AP ! - %d %d\n",vehicle->id,discard_count);
+									}
+
 									/* update the next_carrier's EDD_for_download with the packets forwarded from the AP for pAP */
 									VADD_Update_Vehicle_EDD_And_EDD_SD_For_Download(current_time, param, next_carrier, &FTQ);
 								}
@@ -2920,19 +3315,55 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 
 							/* try to find a better neighboring vehicle than this vehicle to send the AP's packets to a next carrier */
 #if 0 /* [ */
-							if(vehicle->id == 93 && current_time >= 8229)
+							//if(vehicle->id == 93 && current_time >= 8229)
+							if(vehicle->id == 22 || vehicle->id == 1)
 							{
-								printf("%s:%d [%.0f] vehicle(%d) is traced\n",
+								printf("(vehicle=%d,t=%.2f,pos=<%.2f,%.2f>)\n",
+										vehicle->id,current_time,
+										vehicle->current_pos.x,
+										vehicle->current_pos.y);
+								/*printf("%s:%d [%.0f] vehicle(%d) is traced\n",
 										__FUNCTION__, __LINE__,
-										(float)current_time, vehicle->id);
+										(float)current_time, vehicle->id);*/
 							}
 #endif /* ] */
 							if(param->vanet_forwarding_scheme == VANET_FORWARDING_TPD) //if-4.2.3.2
 							{
+								//printf("@@@@@@ TPDITNCAIF AP\n");	
+								//printf("TPD_AP %.2f %d",current_time,Gr_size);							
 								flag = TPD_Is_There_Next_Carrier_At_Intersection_For_AP(param, current_time, pAP, Gr, Gr_size, &next_carrier);
+								/* taehwan 20140712 checking vehicle 71*/
+								/*
+								if (vehicle->id == 71 && (current_time < 7222 && current_time > 7221))
+								{
+									printf("* %.2f vehicle %d was checked... flag is %s *********\n",
+											current_time,vehicle->id,(flag==TRUE?"TRUE":"FALSE"));
+								}*/
+								/*if (flag == TRUE)
+								{
+									printf("  --> %d %d\n",Gr_size,next_carrier->id);
+								} else {
+									printf("  %d\n",Gr_size);
+								}*/	
+
+								/*if (next_carrier != NULL && next_carrier->id == 193)
+									printf("\n%.2f] Is There Next Carrier ? %s = %d\n\n",
+											current_time, (flag == TRUE?"YES":"NO"),vehicle->id);
+								*/
 								if(flag == TRUE) //if-4.2.3.2.1
 								{
 									forward_count = VADD_Forward_Packet_From_AP_To_Next_Carrier(param, current_time, pAP, next_carrier, &packet_delivery_statistics, &discard_count); //AP forwards its packet(s) to the neighboring vehicle and the log for the packet(s) is written into the packet logging file.
+									
+										
+									/* taehwan 20140730 */
+									// check packet ttl has expired
+									if (discard_count > 0)
+									{
+										printf("TTL EXPIRED AT AP 3222 TPD! - %d %d\n",vehicle->id,discard_count);
+									}
+
+
+									
 									if(next_carrier == NULL) //if-4.2.3.2.1.1
 									{
 										printf("%s:%d VADD_Forward_Packet_From_AP_To_Next_Carrier() returns no next_carrier along with positive forward_count(%d) with discard_count(%d)\n",
@@ -2941,9 +3372,13 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 									} //end of if-4.2.3.2.1.1
 									else 
 									{
-										printf("TPD find next carrier (%d) at intersection for ap , arrived at(%.2f)\n"
+										printf("\n%.2f] %d TPD find next carrier (%d) at intersection for ap , arrived at(%.2f)\n\n"
+												,current_time, vehicle->id
 												,next_carrier->id
 												,next_carrier->arrival_time);
+
+										/* taehwan 20140725 */
+										g_next_carrier = next_carrier->id;
 									}
 								} //end of if-4.2.3.2.1
 							} //end of if-4.2.3.2
@@ -2955,7 +3390,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								/* set AP's target point to target_point_id again */
 								pAP->target_point_id = target_point_id;
 #endif /* ] */
-
+//printf("@@@@@@\n");
 								flag = VADD_Is_There_Next_Carrier_At_Intersection_For_AP(param, current_time, pAP, Gr_set[target_point_id-1], Gr_set_size[target_point_id-1], &FTQ, &next_carrier);
 								if(flag == TRUE) //if-4.2.3.3.1
 								{
@@ -3000,16 +3435,40 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 				/**************************************************************/
 
 				/* For flag_packet_log == TRUE and param->data_forwarding_mode == DATA_FORWARDING_MODE_DOWNLOAD, check whether this vehicle is within the communication range with one of destination vehicles or not */
-
+				
+				//bool isInRange = FALSE;
+				/* taehwan 20140722 */
+				/*
+				if (current_time < 7201 && current_time > 7200)
+				    show_trajectory_and_arrival_time_for_all_vehicles();
+				*/
 				if((flag_packet_log == TRUE) && (param->data_forwarding_mode == DATA_FORWARDING_MODE_DOWNLOAD || param->data_forwarding_mode == DATA_FORWARDING_MODE_V2V)) //if-1
 				{
 					flag = VADD_Is_Within_Destination_Vehicle_Communication_Range(param, vehicle, Gr, Gr_size, &DVQ, &destination_vehicle);
+					isInRange = flag;
 					if(flag) //if-1.1
 					{
+
+
 						/* check whether the vehicle's convoy (i.e., the vehicle's convoy leader) has packets or not */
 						if(does_vehicle_convoy_have_packet(vehicle, param)) //if-1.1.1
 						{
+							/* taehwan 20140731 */
+							/*
+							int vehicle_id = vehicle->ptr_convoy_queue_node->leader_vehicle->id;
+							double predicted_time = TPD_Get_Predicted_Encounter_Time(vehicle_id);
+	
+							printf("Predicted Time of %d is %.2f\n",vehicle_id,predicted_time);
+	
+							if (predicted_time + 100 < current_time)
+								printf("\nEXPIRED MEETING!!!!!!!\n\n");
+							*/
+
+							/* taehwan 20140712 checking forwarding */
+							//printf("does_vehicle_convoy_have_packet == TRUE\n");
 							VADD_Forward_Packet_To_Destination_Vehicle(param, current_time, vehicle->ptr_convoy_queue_node->leader_vehicle, destination_vehicle, &packet_delivery_statistics); //vehicle forwards its packet(s) to the destination vehicle
+							/* taehwan 20140725 */
+							g_next_carrier = 0;
 
 							if(param->data_forwarding_mode == DATA_FORWARDING_MODE_DOWNLOAD)
 							{
@@ -3021,8 +3480,13 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 						/* check whether the vehicle's convoy (i.e., the vehicle's convoy leader) has packets or not */
 						if(does_vehicle_have_packet(vehicle)) //if-1.1.2
 						{
-							VADD_Forward_Packet_To_Destination_Vehicle(param, current_time, vehicle, destination_vehicle, &packet_delivery_statistics); //vehicle forwards its packet(s) to the destination vehicle
+							/* taehwan 20140712 checking forwarding */
+							g_next_carrier = 0;
 
+							//printf("does_vehicle_have_packet == TRUE\n");
+							
+							VADD_Forward_Packet_To_Destination_Vehicle(param, current_time, vehicle, destination_vehicle, &packet_delivery_statistics); //vehicle forwards its packet(s) to the destination vehicle
+							/* taehwan 20140725 */
 							if(param->data_forwarding_mode == DATA_FORWARDING_MODE_DOWNLOAD)
 							{
 								/* update the vehicle's EDD_for_download after forwarding */
@@ -3088,14 +3552,26 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 							{
 								if(param->vanet_forwarding_scheme == VANET_FORWARDING_TPD && does_vehicle_have_packet(vehicle)) //if-1.1.1.2.1
 								{
+									//printf("@@@@@@\n");
 									flag = TPD_Is_There_Next_Carrier_At_Intersection(param, current_time, vehicle, Gr, Gr_size, &next_carrier);
 									if(flag) //if-1.1.1.2.1.1
 									{
 										printf("TPD find next carrier (%d) at intersection, arrived at(%.2f)\n"
 												,next_carrier->id
 												,next_carrier->arrival_time);
-								
+										/* taehwan 20140725 */
+										g_next_carrier = next_carrier->id;
+
 										VADD_Forward_Packet_To_Next_Carrier(param, current_time, vehicle, next_carrier, &packet_delivery_statistics, &discard_count); //vehicle forwards its packet(s) to the next carrier pointed by next_carrier
+							
+									/* taehwan 20140730 */
+									// check packet ttl has expired
+									if (discard_count > 0)
+									{
+										printf("TTL EXPIRED AT Intersection 3416 ! - %d %d\n",vehicle->id,discard_count);
+									}
+
+
 									} //end of if-1.1.1.2.1.1
 									
 								} //end of if-1.1.1.2.1
@@ -3193,9 +3669,13 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 							{
 								/* we select vehicle restart state according to data forwarding mode and target vehicle's id */
 								if((param->data_forwarding_mode == DATA_FORWARDING_MODE_DOWNLOAD || param->data_forwarding_mode == DATA_FORWARDING_MODE_V2V) && Is_Destination_Vehicle(&DVQ, vehicle->id))
+								{	
 									state = VEHICLE_TARGET_VEHICLE_RESTART;
-								else
+								}
+								else 
+								{
 									state = VEHICLE_RESTART;
+								}
 							}
 							else
 							{
@@ -3318,6 +3798,9 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 									flag = VADD_Is_There_Next_Carrier_On_Road_Segment(param, current_time, vehicle, Gr, Gr_size, &next_carrier);
 									if(flag) //if-2.1.1.1.1
 									{
+										/* taehwan 20140730 */
+										printf("Hi %d~!!!!\n",next_carrier->id);
+								    	
 										if(param->vehicle_vanet_forwarding_type == VANET_FORWARDING_BASED_ON_CONVOY) //if-2.1.1.1.1.1
 										{
 											VADD_Forward_Packet_To_Next_Carrier(param, current_time, vehicle, next_carrier->ptr_convoy_queue_node->leader_vehicle, &packet_delivery_statistics, &discard_count); //vehicle forwards its packet(s) to the next carrier pointed by next_carrier's convoy head
@@ -3332,14 +3815,30 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								{
 									if(param->vanet_forwarding_scheme == VANET_FORWARDING_TPD) //if-2.1.1.1.1
 									{
+									        //printf("@@@ TPD_NCOR\n");
 										flag = TPD_Is_There_Next_Carrier_On_Road_Segment(param, current_time, vehicle, Gr, Gr_size, &next_carrier);
 										if(flag) //if-2.1.1.1.1.1
 										{
+
+											/* taehwan 20140730 */
+											printf("Hi %d~!!!!\n",next_carrier->id);
 								    		printf("TPD find next carrier (%d) on road segment, arrived at(%.2f)\n"
 												,next_carrier->id
 												,next_carrier->arrival_time);
+											
+											/* taehwan 20140725 */
+											g_next_carrier = next_carrier->id;
 
 											VADD_Forward_Packet_To_Next_Carrier(param, current_time, vehicle, next_carrier, &packet_delivery_statistics, &discard_count); //vehicle forwards its packet(s) to the next carrier pointed by next_carrier
+									
+											/* taehwan 20140730 */
+											// check packet ttl has expired
+											if (discard_count > 0)
+											{
+												printf("TTL EXPIRED AT AP On road 3676! - %d %d\n",vehicle->id,discard_count);
+											}
+
+
 										} //end of if-2.1.1.1.1.1
 									} //end of if-2.1.1.1.1
 									else if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD) //else if-2.1.1.1.2
@@ -3433,6 +3932,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 							{
 								if(param->vanet_forwarding_scheme == VANET_FORWARDING_TPD && does_vehicle_have_packet(vehicle)) //if-2.1.1.2.1
 								{
+									//printf("@@@ TPDISTNCAI\n");
 									flag = TPD_Is_There_Next_Carrier_At_Intersection(param, current_time, vehicle, Gr, Gr_size, &next_carrier);
 									if(flag) //if-2.1.1.2.1.1
 									{
@@ -3440,7 +3940,20 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 										printf("TPD find next carrier (%d) at intersection, arrived at(%.2f)\n"
 												,next_carrier->id
 												,next_carrier->arrival_time);
+										
+										/* taehwan 20140725 */
+										g_next_carrier = next_carrier->id;
+										
 										VADD_Forward_Packet_To_Next_Carrier(param, current_time, vehicle, next_carrier, &packet_delivery_statistics, &discard_count); //vehicle forwards its packet(s) to the next carrier pointed by next_carrier
+											
+										/* taehwan 20140730 */
+										// check packet ttl has expired
+										if (discard_count > 0)
+										{
+											printf("TTL EXPIRED AT Intersection 3790 ! - %d %d\n",vehicle->id,discard_count);
+										}
+
+
 									} //end of if-2.1.1.2.1.1
 								} //end of if-2.1.1.2.1
 								else if((param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD) && does_vehicle_convoy_have_packet(vehicle, param)) //if-2.1.1.2.2
@@ -3656,6 +4169,10 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 									flag = VADD_Is_There_Next_Carrier_On_Road_Segment(param, current_time, vehicle, Gr, Gr_size, &next_carrier);
 									if(flag) //if-4.1.1.1.1
 									{
+
+										/* taehwan 20140730 */
+										printf("Hi %d~!!!!\n",next_carrier->id);
+								    	
 										if(param->vehicle_vanet_forwarding_type == VANET_FORWARDING_BASED_ON_CONVOY) //if-4.1.1.1.1.1
 										{
 											VADD_Forward_Packet_To_Next_Carrier(param, current_time, vehicle, next_carrier->ptr_convoy_queue_node->leader_vehicle, &packet_delivery_statistics, &discard_count); //vehicle forwards its packet(s) to the next carrier pointed by next_carrier's convoy head
@@ -3670,13 +4187,26 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								{
 									if(param->vanet_forwarding_scheme == VANET_FORWARDING_TPD) //if-4.1.1.1.1
 									{
+										//printf("@@@@@ ONROAD\n");
 										flag = TPD_Is_There_Next_Carrier_On_Road_Segment(param, current_time, vehicle, Gr, Gr_size, &next_carrier);
 										if(flag) //if-4.1.1.1.1.1
 										{
+
+											/* taehwan 20140730 */
+											printf("Hi %d~!!!!\n",next_carrier->id);
+								    	
 											printf("TPD find next carrier (%d) on road segment, arrived at(%.2f)\n"
 												,next_carrier->id
 												,next_carrier->arrival_time);
-											VADD_Forward_Packet_To_Next_Carrier(param, current_time, vehicle, next_carrier, &packet_delivery_statistics, &discard_count); //vehicle forwards its packet(s) to the next carrier pointed by next_carrier
+											
+											/* taehwan 20140725 */
+											g_next_carrier = next_carrier->id;
+										
+											//vehicle forwards its packet(s) to the next carrier pointed by next_carrier
+											VADD_Forward_Packet_To_Next_Carrier(param, current_time, vehicle, next_carrier, &packet_delivery_statistics, &discard_count); 
+											
+											/* taehwan 20140725 */
+											g_next_carrier = next_carrier->id;
 										} //end of if-4.1.1.1.1.1
 									} //end of if-4.1.1.1.1
 									else if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD) //else if-4.1.1.1.2
@@ -3739,6 +4269,99 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 					delay = 0; //let vehicle go to the state VEHICLE_CHECK
 				}
 
+				{
+				int tT = atoi(vehicle->current_pos_in_digraph.tail_node);
+				int tH = atoi(vehicle->current_pos_in_digraph.head_node);
+
+				/* taehwan 20140724 */
+				/* Update Vehicle Point */
+				g_x=0;
+				g_y=0;
+
+				convertDigraphToCoordinate(
+						tT,
+						tH,
+						vehicle->current_pos_in_digraph.offset,
+						vehicle->edge_length);
+
+				g_vehicle_point[vehicle->id][0] = g_x;
+				g_vehicle_point[vehicle->id][1] = g_y;
+                g_vehicle_point[vehicle->id][2] = g_direction;
+
+				if ( does_vehicle_have_packet(vehicle) == TRUE)
+				{
+					g_vehicle_have_packet[vehicle->id] = 1;				
+				} else
+				{
+					g_vehicle_have_packet[vehicle->id] = 0;				
+				}
+
+				g_current_time = current_time;
+				
+				
+				if (g_gnuplot_option == 2 && vehicle->current_pos_in_digraph.offset > 0)
+					gnuplot_vehicle_point(current_time);
+
+				/* taehwan 20140719 */
+				if (vehicle->id != 1) {	
+				
+					if (vehicle->id < VEHICLE_COUNT_MAX && vehicle->id >= 0)
+					{
+						// increase visit count only when visiting new intersection 
+						if (g_vehicle_current_segment_location[vehicle->id] != tH)
+						{
+							g_vehicle_current_segment_location[vehicle->id] == tH;
+							if (tH+7==tT)
+							{
+								g_segment_visit_count[tH][0]++;
+							} else if (tH+1==tT)
+							{
+								g_segment_visit_count[tH][1]++;
+							} else if (tH-7==tT)
+							{
+								g_segment_visit_count[tH][2]++;
+							} else if (tH-1==tT)
+							{
+								g_segment_visit_count[tH][3]++;
+							}
+
+							if (g_gnuplot_option == 1)
+								gnuplot_intersection_visit_count();
+						}
+
+					}	
+				}
+				}
+				// taehwan 20140711
+				/*if ((vehicle->id == 22 || vehicle->id == 1) 
+						&& (current_time > 23680 && current_time <23730))
+				{
+					printf("%.2f,%d,%s,%s,%0.f,%0.f,%d\n",
+						current_time,
+						vehicle->id,
+						vehicle->current_pos_in_digraph.tail_node,
+						vehicle->current_pos_in_digraph.head_node,
+						vehicle->current_pos_in_digraph.offset,
+						vehicle->edge_length,
+						isInRange);
+				}*/
+				
+				/* taehwan 20140714 print current pos of vehicle */
+				/*
+				if ((vehicle->id == 71 || vehicle->id == 77 || vehicle->id == 1) &&
+					(current_time < 7900 && current_time > 7200))
+				{
+					printf("%.2f,%d,%s,%s,%0.f,%0.f,%d\n",
+						current_time,
+						vehicle->id,
+						vehicle->current_pos_in_digraph.tail_node,
+						vehicle->current_pos_in_digraph.head_node,
+						vehicle->current_pos_in_digraph.offset,
+						vehicle->edge_length,
+						isInRange);
+				}
+				*/
+				setLogOnOff(FALSE);				
 				/* transit to VEHICLE_CHECK state */
 				schedule(VEHICLE_CHECK, delay, id);
 
@@ -3938,18 +4561,22 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 				/** check whether there are packets to send and if there are packets to send, try to send them to a neighboring vehicle */
 				if(vehicle->packet_queue->size > 0)
 				{
-				  /**@for debugging */
-				  //if(vehicle->packet_queue->head.next->seq == 11)
-				  //  printf("main(): VEHICLE_STATIONARY_VEHICLE_SEND: packet(seq=%d) is traced\n", vehicle->packet_queue->head.next->seq);
-				  /******************/
+					/**@for debugging */
+					//if(vehicle->packet_queue->head.next->seq == 11)
+					//  printf("main(): VEHICLE_STATIONARY_VEHICLE_SEND: packet(seq=%d) is traced\n", vehicle->packet_queue->head.next->seq);
+					/******************/
 
-                                  /* try to send the vehicle's packets to the neighboring vehicle */
-				  flag = VADD_Is_There_Next_Carrier_On_Road_Segment(param, current_time, vehicle, Gr, Gr_size, &next_carrier);
-                                  //@Note: next_carrier is the convoy tail for the source vehicle of vid=1; on the other hand, for the other vehicles, next_carrier is the convoy leader.
-                                  if(flag) //if-1
-                                  {
-                                    VADD_Forward_Packet_To_Next_Carrier(param, current_time, vehicle, next_carrier, &packet_delivery_statistics, &discard_count); //vehicle forwards its packet(s) to the next carrier pointed by next_carrier
-                                  } //end of if-1.1
+					/* try to send the vehicle's packets to the neighboring vehicle */
+				    flag = VADD_Is_There_Next_Carrier_On_Road_Segment(param, current_time, vehicle, Gr, Gr_size, &next_carrier);
+                    //@Note: next_carrier is the convoy tail for the source vehicle of vid=1; on the other hand, for the other vehicles, next_carrier is the convoy leader.
+                    if(flag) //if-1
+                    {
+						/* taehwan 20140730 */
+					    printf("Hi %d~!!!!\n",next_carrier->id);
+								    	
+						VADD_Forward_Packet_To_Next_Carrier(param, current_time, vehicle, next_carrier, &packet_delivery_statistics, &discard_count); //vehicle forwards its packet(s) to the next carrier pointed by next_carrier
+
+					} //end of if-1.1
 				}
                                 
 				/** schedule packet transmission */
@@ -4276,6 +4903,19 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 
 				/* enqueue packet into packet queue */
 				pPacket = (packet_queue_node_t*) Enqueue((queue_t*)pAP->packet_queue, (queue_node_t*)&packet);
+				
+#ifdef BSMA_20150227
+				// taehwan 20150227 test for BSMA
+				/** construct a multicast tree according to the multicast-tree-construction algorithm */
+				if(APQ.size == 1)
+				{
+					ST_Construct_Multicast_Tree(param, current_time, pAP->vertex, &DVQ, &FTPQ, &ESQ, pGlobalPacket);
+				} 
+				else
+				{
+					ST_Construct_Multicast_Forest(param, current_time, &APQ, &DVQ, &FTPQ, &ESQ, pGlobalPacket);
+				}
+#endif				
 
 				/** set up packet's target point or vehicle trajectory with vehicle's trajectory according to target point selection type */
 				if(param->data_forwarding_mode == DATA_FORWARDING_MODE_DOWNLOAD)
@@ -4931,11 +5571,15 @@ Note that for the static forwarding, the path from the AP to the target point in
 	DestroyRoadNetworkGraphSet_And_DirectionalEdgeQueueSet(Gr_set_number, Gr_set, Gr_set_size, DEr_set);
 
 	/* free the memory for statistics for traffic arrivals each source */
+	//printf("free its\n");
 	free(interarrival_time_sum); interarrival_time_sum = NULL;
+	//printf("free an\n");
 	free(arrival_number); arrival_number = NULL;
+	//printf("free pat\n");
 	free(previous_arrival_time); previous_arrival_time = NULL;
+	//printf("free ait\n");
 	free(average_interarrival_time); average_interarrival_time = NULL;
-
+	//printf("free vl\n");
 	/* release dynamic memory for vehicle_list */
 	free_vehicle_list();
 

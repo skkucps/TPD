@@ -10,6 +10,23 @@
 #include "util.h"
 #include "gsl-util.h"
 
+/* taehwan 20140802 */
+int g_margin_time = 0;
+
+void TPD_Set_Margin_Time(int margin)
+{
+	g_margin_time = margin;
+}
+
+/* taehwna 20140731 */
+double g_predicted_encounter_time[5000]={0,};
+
+double TPD_Get_Predicted_Encounter_Time(int vehicle_id)
+{
+	return g_predicted_encounter_time[vehicle_id];
+}
+
+
 /** The Operations of Predicted Encounter Graph */
 
 int TPD_Allocate_Predicted_Encounter_Graph(parameter_t *param, struct_vehicle_t *vehicle)
@@ -189,7 +206,9 @@ double TPD_Compute_EDR_and_EDD_For_Greedy_Routing(double current_time,
 	double EDR = 0; //Expected Delivery Ratio (EDR)
 
 #if TPD_VEHICLE_TRAJECTORY_PRINT_FLAG /* [ */
-	show_trajectory_and_arrival_time_for_all_vehicles();
+	//if (current_time > 7221 && current_time < 7222)
+	//if (current_time > 23598 && current_time < 23630)
+		show_trajectory_and_arrival_time_for_all_vehicles();
 	//show the vehicle trajectory along with the arrival time per path node along the vehicle trajectory for all the vehicles in vehicle_list
 #endif /* ] */
 
@@ -200,7 +219,7 @@ double TPD_Compute_EDR_and_EDD_For_Greedy_Routing(double current_time,
 
 	/* construct a predicted encounter graph of src_vehicle toward dst_vehicle */
 	EDR = TPD_Construct_Predicted_Encounter_Graph(current_time, param, src_vehicle, dst_vehicle, encounter_graph_display_flag);
-
+	printf("========> EDR = %.2f\n",EDR);
 	return EDR;
 }
 
@@ -289,6 +308,7 @@ double TPD_Construct_Predicted_Encounter_Graph(double current_time,
 	 * If so, return EDR = 1. */
 	if(src_vehicle->id == dst_vehicle->id)
 	{
+		printf("\n**** src vehicle == dst vehicle %d ***\n\n",src_vehicle->id);
 		EDR = 1;
 		return EDR;
 	}
@@ -324,25 +344,26 @@ double TPD_Construct_Predicted_Encounter_Graph(double current_time,
 
 	/* Step 5: Search the encountered vehicles met by the current vehicle
 	 *		with a certain encounter probability (>= threshold (e.g., 
-	 *		0.7)) as child vehicles into Q. Perform the following: 
+	 *		0.7)) as child vehicles that are inserted into Q. Perform the following: 
 	 *			- let the current vehicle point to its parent vehicle.
 	 *			- let the parent vehicle point to the current vehicle.
 	 *		After the search, go to Step 1. 
 	 *		*/
-
+int tempX = 1;
 	do //do-while-1	
 	{
 		/* Step 1: Exit the loop if the heap Q is empty or all of the vehicles are 
 		 *			visited. */
 		if(Q->size == 0)
 		{
+			//printf("         taehwan11291020 TPD Construct Q empty src_vehicle = %d\n",src_vehicle->id);
 			break;
 		}
 
 		/* Step 2: Dequeue the root from Q and set it to the current vehicle. */
 		pQueueNode = (minimum_priority_queue_node_t*)Dequeue((queue_t*)Q);
 		current_vehicle = (struct_vehicle_t*)pQueueNode->object;
-
+		//printf("         taehwan11291011 TPD Construct current_vehicle:%d\n",current_vehicle->id);
 #if 0 /* [ */
 			if(src_vehicle->id == 325 && current_time >= 7239 && current_vehicle->id == 155)
 			{
@@ -366,6 +387,7 @@ double TPD_Construct_Predicted_Encounter_Graph(double current_time,
 				(current_vehicle->id != dst_vehicle->id))
 		{ //since the graph node for current_vehicle already exists, delete this queue node and move on the next vehicle in Q
 			/* delete pQueueNode */
+			//printf("         taehwan11291028 TPD Construct DestroyQueue %d\n",current_vehicle->id);
 			DestroyQueueNode(Q->type, (queue_node_t*)pQueueNode); 
 			continue;
 		}
@@ -475,7 +497,25 @@ double TPD_Construct_Predicted_Encounter_Graph(double current_time,
 		 *		*/
 		//T_threshold = pQueueNode->key; //the encounter time of vehicle and its parent vehicle  
 		vehicle_list = get_vehicle_list(); //get the pointer to vehicle_list defined in util.c
+		
 		vehicle = vehicle_list->next;
+	/*	printf("%.2f] taehwan11272130 TPD Construct ",current_time);
+
+		while(vehicle != vehicle_list)
+		{
+			if (vehicle->id == current_vehicle->id)
+			{
+				vehicle = vehicle->next;
+				continue;
+			}
+			printf("%s%d",(vehicle == vehicle_list->next?"":","),vehicle->id);
+			vehicle = vehicle->next;
+		}
+		printf(")\n");
+	*/	
+		vehicle = vehicle_list->next;
+		//printf("         taehwan11241602 TPD Construct T_Threshold=%.2f Start current_id = %d src_id = %d QSize = %d\n",T_threshold,current_vehicle->id,src_vehicle->id,Q->size);
+		//TPD_Print_Vehicle_Trajectory(current_vehicle);
 		while(vehicle != vehicle_list) //while-1
 		{
 			if(vehicle->id == current_vehicle->id)
@@ -484,19 +524,10 @@ double TPD_Construct_Predicted_Encounter_Graph(double current_time,
 				continue;
 			}
 
-#if 0 /* [ */
-			if(src_vehicle->id == 325 && current_time >= 7239 && T_threshold >= 7647 && current_vehicle->id == 155 && vehicle->id == 1)
-			{
-				printf("%s:%d [%0.f] current_vehicle(%d) and vehicle(%d) are traced - 1.\n", 
-						__FUNCTION__, __LINE__,
-						current_time,
-						current_vehicle->id, vehicle->id);
-			}
-#endif /* ] */
-
 #if 0 /* [ */			
 			flag = TPD_Do_Vehicles_Encounter(current_time, param, current_vehicle, vehicle, &tail_vertex, &head_vertex, &edge_length, &P_encounter, &T_encounter, &D_encounter, &O_encounter); //check whether src_vehicle and vehicle encounter at the offset O_encounter in an edge (tail_vertex, head_vertex) with P_encounter of at least encounter_probability_threshold at time T_encounter after the travel time (i.e., delay) of D_encounter.
 #endif /* ] */
+			
 			flag = TPD_Compute_Encounter_Probability(param, 
 					vehicle, 
 					current_vehicle,
@@ -508,12 +539,15 @@ double TPD_Construct_Predicted_Encounter_Graph(double current_time,
 					&T_encounter, 
 					&D_encounter, 
 					&O_encounter); //check whether src_vehicle and vehicle encounter at the offset O_encounter in an edge (tail_vertex, head_vertex) with P_encounter of at least encounter_probability_threshold at time T_encounter after the travel time (i.e., delay) of D_encounter.
+		        //printf("%.2f] taehwan11241602 TPD Construct (v1,v2):(%d,%d) (tail,head):(%d,%d) EDR:%.2f\n",current_time,vehicle->id,current_vehicle->id,tail_vertex,head_vertex,P_encounter);
 			if(flag == FALSE)
 			{
 				vehicle = vehicle->next; //move on the next vehicle in vehicle_list
 				continue;
 			}
-
+			//printf("         taehwan11241602 TPD Construct %3d->%3d(%.2f %s-%s) at t=%.2f %.2f/%.2f %2d-%2d is %.4f %s\n",current_vehicle->id,vehicle->id,vehicle->path_current_edge_offset,vehicle->current_pos_in_digraph.tail_node,vehicle->current_pos_in_digraph.head_node,T_encounter,O_encounter,edge_length,tail_vertex,head_vertex,P_encounter,(vehicle->id==1?"*":""));
+			//if (current_time >= 8473 && current_time < 8473.60) 
+			//	TPD_Print_Vehicle_Trajectory(vehicle);
 #if 0 /* [ */
 			if(vehicle->id == dst_vehicle->id)
 			{
@@ -523,33 +557,13 @@ double TPD_Construct_Predicted_Encounter_Graph(double current_time,
 			}
 #endif /* ] */
 
-#if 0 /* [ */
-			if(src_vehicle->id == 325 && current_time >= 7239 && current_vehicle->id == 168 && vehicle->id == 155)
-			{
-				printf("%s:%d [%0.f] current_vehicle(%d) and vehicle(%d) are traced - 2.\n", 
-						__FUNCTION__, __LINE__,
-						current_time,
-						current_vehicle->id, vehicle->id);
-			}
-#endif /* ] */
-
-#if 0 /* [ */
-			if(src_vehicle->id == 325 && current_time >= 7239 && current_vehicle->id == 155 && vehicle->id == 1)
-			{
-				printf("%s:%d [%0.f] current_vehicle(%d) and vehicle(%d) are traced - 3.\n", 
-						__FUNCTION__, __LINE__,
-						current_time,
-						current_vehicle->id, vehicle->id);
-			}
-#endif /* ] */
-			
 			/* enqueue vehicle into src_vehicle's predicted_encounter_graph's queue Q in the ascending order of the encounter time T_encounter */
-            memset(&mpq_qnode, 0, sizeof(minimum_priority_queue_node_t));
-            mpq_qnode.id = vehicle->id;
-            mpq_qnode.key = T_encounter; //the encounter time of current_vehicle and vehicle 
-            mpq_qnode.object_type = QUEUE_NODE_OBJECT_VEHICLE;
-            mpq_qnode.object = vehicle;
-            pChildQueueNode = (minimum_priority_queue_node_t*)Enqueue_By_KeyAscendingOrder((queue_t*)Q, (queue_node_t*)&mpq_qnode);
+           		memset(&mpq_qnode, 0, sizeof(minimum_priority_queue_node_t));
+            		mpq_qnode.id = vehicle->id;
+            		mpq_qnode.key = T_encounter; //the encounter time of current_vehicle and vehicle 
+            		mpq_qnode.object_type = QUEUE_NODE_OBJECT_VEHICLE;
+            		mpq_qnode.object = vehicle;
+            		pChildQueueNode = (minimum_priority_queue_node_t*)Enqueue_By_KeyAscendingOrder((queue_t*)Q, (queue_node_t*)&mpq_qnode);
 
 			/* let vehicle's mpq_qnode have the pointer to its parent graph node for 
 			 * current_vehicle pointed by pGraphNode.
@@ -570,6 +584,11 @@ double TPD_Construct_Predicted_Encounter_Graph(double current_time,
 			parent_qnode.graph_qnode = pGraphNode; //let graph_qnode point to the graph node in adjacency list queue pointed by pGraphNode
 			Enqueue((queue_t*)&(pChildQueueNode->parent_list), (queue_node_t*)&parent_qnode);
 
+			/* taehwan 20140731 */
+			//printf("Encounter Time %d = %.2f\n",current_vehicle->id,T_encounter);
+			g_predicted_encounter_time[current_vehicle->id] = T_encounter;
+			//printf("%d = %.2f\n",current_vehicle->id,T_encounter);
+			
 			/* take the next vehicle */
 			vehicle = vehicle->next;
 		} //end of while-1
@@ -578,6 +597,7 @@ double TPD_Construct_Predicted_Encounter_Graph(double current_time,
 
 	if(G->dst_vehicle_gnode != NULL)
 	{
+		
 #if 0 /* [ */
 			if(src_vehicle->id == 153)
 			{
@@ -611,10 +631,21 @@ double TPD_Construct_Predicted_Encounter_Graph(double current_time,
 		/* perform the Breadth-First-Search (BFS) for the given encounter graph G from source vehicle to destination vehicle in G */
 #endif /* ] */
 	}
+	else
+	{
+		//if (src_vehicle->id == 193)
+		//printf("%.2f]G->dst_node is NULL!!! %d but EDR is %.2f\n",current_time,src_vehicle->id,src_vehicle->EDR_for_V2V);
+		// taehwan 20140826
+		// EDR MUST be 0 when dst_vehicle is NULL.
+		src_vehicle->EDR_for_V2V = 0;
+	}
 
 	/* reset Q and G in predicted_encounter_graph by emptying the queue nodes. */
 	TPD_Reset_Queues_In_Predicted_Encounter_Graph(src_vehicle);
 
+	//if (src_vehicle->id == 193)
+	//	printf("\n%.2f] EDR %d is %.2f\n\n",current_time,src_vehicle->id,src_vehicle->EDR_for_V2V);
+	
 	return src_vehicle->EDR_for_V2V;
 }
 
@@ -651,6 +682,8 @@ double TPD_Construct_Predicted_Encounter_Graph_For_Packet(double current_time,
 	double O_encounter = 0; //offset in the encountered edge where src_vehicle and vehicle encounter
 	boolean destination_flag = FALSE; //flag to indicate whether the graph node for dst_vehicle exists in the graph G
 	double EDR = 0; //Expected Delivery Ratio (EDR)
+
+	//printf("TPD_Construct_Predicted_Encounter_Graph_For_Packet %.2f\n",current_time);
 
 #if 1 /* [ */
 	if(current_time > 7336 && src_vehicle->id == 300)
@@ -700,7 +733,10 @@ double TPD_Construct_Predicted_Encounter_Graph_For_Packet(double current_time,
 	mpq_qnode.object_type = QUEUE_NODE_OBJECT_VEHICLE;
 	mpq_qnode.object = src_vehicle;
 	Enqueue((queue_t*)Q, (queue_node_t*)&mpq_qnode);
- 
+
+	//printf("TPD_Construct_Predicted_Encounter_Graph_For_Packet\n");
+
+
 	/** GRAPH CONSTRUCTION PHASE: construct an encounter graph */
 	/* Step 1: Exit the loop if the heap Q is empty or all of the vehicles are 
 	 *			visited. */
@@ -726,6 +762,7 @@ double TPD_Construct_Predicted_Encounter_Graph_For_Packet(double current_time,
 	 *		After the search, go to Step 1. 
 	 *		*/
 
+//printf("\n$$$$$$\n Test\n$$$$$$\n");
 	do //do-while-1	
 	{
 		/* Step 1: Exit the loop if the heap Q is empty or all of the vehicles are 
@@ -738,7 +775,7 @@ double TPD_Construct_Predicted_Encounter_Graph_For_Packet(double current_time,
 		/* Step 2: Dequeue the root from Q and set it to the current vehicle. */
 		pQueueNode = (minimum_priority_queue_node_t*)Dequeue((queue_t*)Q);
 		current_vehicle = (struct_vehicle_t*)pQueueNode->object;
-
+//printf("   CurrentVehicle %d\n",current_vehicle->id);
 		/* Step 3: If a graph node for current_vehicle does not exist, 
 		 *		insert a graph node for the current vehicle into G and
 		 *		let the parent graph node point to this graph node as a 
@@ -870,6 +907,7 @@ double TPD_Construct_Predicted_Encounter_Graph_For_Packet(double current_time,
 				continue;
 			}
 
+//printf("       next %d\n",vehicle->id);
 #if 1 /* [ */
 			if(current_vehicle->id == 283 && vehicle->id == 1)
 			{
@@ -1203,7 +1241,8 @@ int TPD_Prune_Encounter_Graph(adjacency_list_queue_t *G)
 	return 0;
 }
 
-boolean TPD_Compute_Encounter_Probability(parameter_t *param,
+boolean TPD_Compute_FWD_Probability(
+		parameter_t *param,	
 		struct_vehicle_t *vehicle1, 
 		struct_vehicle_t *vehicle2, 
 		double T_threshold,
@@ -1329,34 +1368,497 @@ boolean TPD_Compute_Encounter_Probability(parameter_t *param,
 
 			//t_2 = length1*unit_length_travel_time; //Error: length1 must be replaced with length2.
 			t_2 = length2*unit_length_travel_time_2;
-
+			
 			/* check whether vehicle1 and vehicle2 encounter in edge (tail_1, head_1) */
-			if((tail_1 == head_2) && (head_1 == tail_2) && (T_tail_1 <= T_head_2) && (T_head_1 >= T_tail_2))
+			//if((tail_1 == head_2) && (head_1 == tail_2) && (T_tail_1 <= T_head_2) && (T_head_1 >= T_tail_2))
+			/* taehwan 20140726 */
+			int margin_time = g_margin_time;
+			// Apply Margin for preventing missing case
+		    //if((tail_1 == head_2) && (head_1 == tail_2) && (T_tail_1+ margin_time <= T_head_2) && (T_head_1 >= T_tail_2+ margin_time))
+			if((tail_1 == head_2) && (head_1 == tail_2) && ((T_tail_1+ margin_time <= T_head_2) && (T_head_1 >= T_tail_2+ margin_time)))
+				{
+					*edge_length = path_ptr1->next->weight;
+					*T_encounter = (*edge_length + vehicle1->speed*T_tail_1 + vehicle2->speed*T_tail_2)/(vehicle1->speed + vehicle2->speed);
+					//*D_encounter = *T_encounter - current_time;
+					*D_encounter = *T_encounter - T_threshold;
+					*O_encounter = (*T_encounter - T_tail_1)*vehicle1->speed;
+					*tail_vertex = tail_1;
+					*head_vertex = head_1;
+	
+					if((*D_encounter >= 0) && (*T_encounter >= T_threshold))
+					{
+#if TPD_ENCOUNTER_TRACE_FLAG /* [ */
+						printf("%s:%d vehicle1(%d) and vehicle2(%d) encounter at the offset(%.0f) in the edge(%d, %d) of length(%.0f): vehicle1[%.0f,%.0f] and vehicle2[%.0f,%.0f] with T_threshold(%.0f), encounter time(%.0f), encounter delay(%.0f)\n", __FUNCTION__, __LINE__, vehicle1->id, vehicle2->id, *O_encounter, tail_1, head_1, *edge_length, T_tail_1, T_head_1, T_tail_2, T_head_2, T_threshold, *T_encounter, *D_encounter);
+#endif /* ] */
+						/* perform the double integral for encounter probability. */
+						*P_encounter = GSL_TPD_Encounter_Probability_For_Gamma_Distribution(
+								D_head_2,
+								D_head_std_2,
+								D_tail_1,
+								D_tail_std_1,
+								0,
+								param->communication_packet_ttl,
+								t_1,
+								t_2);
+						if(*P_encounter >= param->tpd_encounter_probability_threshold)
+						{
+							return TRUE;
+						}
+					}
+			}
+
+			path_ptr2 = path_ptr2->next;
+		}
+
+		path_ptr1 = path_ptr1->next;
+	}
+
+	return FALSE;
+}
+
+boolean TPD_Compute_Encounter_Probability(parameter_t *param,
+		struct_vehicle_t *vehicle1, 
+		struct_vehicle_t *vehicle2, 
+		double T_threshold,
+		int *tail_vertex, 
+		int *head_vertex,
+		double *edge_length,
+		double *P_encounter, 
+		double *T_encounter,
+		double *D_encounter,
+		double *O_encounter)
+{ /* compute the encounter probability (called P_encounter) of vehicle1 and 
+	 vehicle2 that are expected to encounter in the edge (tail_vertex, head_vertex)
+	 of length edge_length and return the boolean flag to indicate whether these 
+	 two vehicles will encounter with some probability.
+	 Note: T_threshold is the encounter time of vehicle and its parent vehicle 
+	 that is used to determine the valid encounter of two vehicles during the 
+	 selection of child vehicles in the predicted encounter graph. */	
+	int tail_1 = 0, head_1 = 0; //the tail vertex and head vertex of the edge visited by vehicle1	
+	int tail_2 = 0, head_2 = 0; //the tail vertex and head vertex of the edge visited by vehicle2	
+	double T_tail_1 = 0, T_head_1 = 0; //the average arrival times for the tail vertex and head vertex of the edge visited by vehicle1	
+	double T_tail_2 = 0, T_head_2 = 0; //the average arrival times for the tail vertex and head vertex of the edge visited by vehicle2	
+	struct_path_node *path_ptr1 = NULL; //pointer to the tail vertex of the current edge along the path of vehicle1
+	struct_path_node *path_ptr2 = NULL; //pointer to the tail vertex of the current edge along the path of vehicle2
+	double T_tail_1_std = 0, T_head_1_std = 0; //the standard deviations of the arrival times for the tail vertex and head vertex of the edge visited by vehicle1	
+	double T_tail_2_std = 0, T_head_2_std = 0; //the standard deviations of the arrival times for the tail vertex and head vertex of the edge visited by vehicle2
+	boolean flag1 = TRUE, flag2 = TRUE; //flags to indicate the current edge
+	double length1 = 0, length2 = 0; //edge lengths
+
+#if 0 /* [ */
+	double unit_length_travel_time = param->vehicle_unit_length_mean_travel_time; //travel time for the unit length
+	double unit_length_travel_time_variance = param->vehicle_unit_length_travel_time_variance; //travel time variance for the unit length
+#else
+	double unit_length_travel_time_1 = vehicle1->unit_length_mean_travel_time; //vehicle1's travel time for the unit length
+	double unit_length_travel_time_variance_1 = vehicle1->unit_length_travel_time_variance; //vehicle1's travel time variance for the unit length
+	double unit_length_travel_time_2 = vehicle2->unit_length_mean_travel_time; //vehicle2's travel time for the unit length
+	double unit_length_travel_time_variance_2 = vehicle2->unit_length_travel_time_variance; //vehicle2's travel time variance for the unit length
+#endif /* ] */
+
+
+	double D_tail_1 = 0, D_tail_2 = 0; //the average travel times for vehicle1 and vehicle2 from their current position to their tail vertex along their trajectory
+	double D_head_1 = 0, D_head_2 = 0; //the average travel times for vehicle1 and vehicle2 from their current position to their head vertex along their trajectory 
+	double D_tail_var_1 = 0, D_tail_var_2 = 0; //the travel time variances for vehicle1 and vehicle2 from their current position to their tail vertex along their trajectory
+	double D_head_var_1 = 0, D_head_var_2 = 0; //the travel time variances for vehicle1 and vehicle2 from their current position to their head vertex along their trajectory
+	double D_tail_std_1 = 0, D_tail_std_2 = 0; //the travel time standard deviations for vehicle1 and vehicle2 from their current position to their tail vertex along their trajectory
+	double D_head_std_1 = 0, D_head_std_2 = 0; //the travel time standard deviations for vehicle1 and vehicle2 from their current position to their head vertex along their trajectory
+
+	double t_1 = 0; //the travel time in the encountered edge of vehicle1
+	double t_2 = 0; //the travel time in the encountered edge of vehicle2
+	int vehicle1_path_current_edge_tail = atoi(vehicle1->path_ptr->vertex); //the tail id of the current edge of vehicle1
+	int vehicle2_path_current_edge_tail = atoi(vehicle2->path_ptr->vertex); //the tail id of the current edge of vehicle2
+
+	for(path_ptr1 = vehicle1->path_ptr; path_ptr1 != vehicle1->path_list->prev;)
+	{
+		tail_1 = atoi(path_ptr1->vertex);
+		head_1 = atoi(path_ptr1->next->vertex);
+		T_tail_1 = path_ptr1->expected_arrival_time;						
+		T_head_1 = path_ptr1->next->expected_arrival_time;					
+																			
+		/* check whether encounter time is later than T_threhold */
+		if(T_tail_1 < T_threshold)				
+		{
+			path_ptr1 = path_ptr1->next;		
+			continue;
+		}
+
+		//if(flag1 == TRUE)
+		if(vehicle1_path_current_edge_tail == tail_1)		
+		{
+			length1 = path_ptr1->next->weight - vehicle1->path_current_edge_offset;		
+			flag1 = FALSE;
+			D_tail_1 = 0;										
+			D_tail_var_1 = 0;
+			D_head_1 = length1*unit_length_travel_time_1;			
+			D_head_var_1 = length1*length1*unit_length_travel_time_variance_1;	
+		}
+		else
+		{
+			length1 = path_ptr1->next->weight;						
+			D_tail_1 = D_head_1;								
+			D_tail_var_1 = D_head_var_1;							
+			D_head_1 += length1*unit_length_travel_time_1;		
+			D_head_var_1 += length1*length1*unit_length_travel_time_variance_1;	
+		}
+
+		D_tail_std_1 = sqrt(D_tail_var_1);		
+		D_head_std_1 = sqrt(D_head_var_1);
+
+		t_1 = length1*unit_length_travel_time_1;	
+		flag2 = TRUE;
+		for(path_ptr2 = vehicle2->path_ptr; path_ptr2 != vehicle2->path_list->prev;)
+		{
+			tail_2 = atoi(path_ptr2->vertex);
+			head_2 = atoi(path_ptr2->next->vertex);										
+			T_tail_2 = path_ptr2->expected_arrival_time;
+			T_head_2 = path_ptr2->next->expected_arrival_time;
+
+			/* check whether encounter time is later than T_threhold */
+			if(T_tail_2 < T_threshold) 
 			{
-				*edge_length = path_ptr1->next->weight;
+				path_ptr2 = path_ptr2->next;
+				continue;
+			}
+
+			//if(flag2 == TRUE)
+			if(vehicle2_path_current_edge_tail == tail_2)
+			{
+				length2 = path_ptr2->next->weight - vehicle2->path_current_edge_offset;	
+				flag2 = FALSE;
+				D_tail_2 = 0;
+				D_tail_var_2 = 0;
+				D_head_2 = length2*unit_length_travel_time_2;
+				D_head_var_2 = length2*length2*unit_length_travel_time_variance_2;
+			}
+			else
+			{
+				length2 = path_ptr2->next->weight;			
+				D_tail_2 = D_head_2;
+				D_tail_var_2 = D_head_var_2;
+				D_head_2 += length2*unit_length_travel_time_2;
+				D_head_var_2 += length2*length2*unit_length_travel_time_variance_2;
+			}
+
+			D_tail_std_2 = sqrt(D_tail_var_2);
+			D_head_std_2 = sqrt(D_head_var_2);		
+
+			//t_2 = length1*unit_length_travel_time; //Error: length1 must be replaced with length2.
+			t_2 = length2*unit_length_travel_time_2;
+			
+			/* check whether vehicle1 and vehicle2 encounter in edge (tail_1, head_1) */
+			//if((tail_1 == head_2) && (head_1 == tail_2) && (T_tail_1 <= T_head_2) && (T_head_1 >= T_tail_2))
+			/* taehwan 20140726 */
+			int margin_time = g_margin_time;	
+			// Apply Margin for preventing missing case
+		    //if((tail_1 == head_2) && (head_1 == tail_2) && (T_tail_1+ margin_time <= T_head_2) && (T_head_1 >= T_tail_2+ margin_time))
+		//	if((tail_1 == head_2) && (head_1 == tail_2) && ((T_tail_1+ margin_time <= T_head_2) && (T_head_1 >= T_tail_2+ margin_time)))
+			if ((tail_1 == head_2) && (head_1 == tail_2) && ((D_tail_1 <= D_head_2) && (D_head_1 >= D_tail_2)))	
+			{									
+				*edge_length = path_ptr1->next->weight;	
 				*T_encounter = (*edge_length + vehicle1->speed*T_tail_1 + vehicle2->speed*T_tail_2)/(vehicle1->speed + vehicle2->speed);
 				//*D_encounter = *T_encounter - current_time;
-				*D_encounter = *T_encounter - T_threshold;
-				*O_encounter = (*T_encounter - T_tail_1)*vehicle1->speed;
-				*tail_vertex = tail_1;
-				*head_vertex = head_1;
-
+				*D_encounter = *T_encounter - T_threshold;	
+				*O_encounter = (*T_encounter - T_tail_1)*vehicle1->speed;	
+				*tail_vertex = tail_1;			
+				*head_vertex = head_1;			
+	
 				if((*D_encounter >= 0) && (*T_encounter >= T_threshold))
 				{
 #if TPD_ENCOUNTER_TRACE_FLAG /* [ */
 					printf("%s:%d vehicle1(%d) and vehicle2(%d) encounter at the offset(%.0f) in the edge(%d, %d) of length(%.0f): vehicle1[%.0f,%.0f] and vehicle2[%.0f,%.0f] with T_threshold(%.0f), encounter time(%.0f), encounter delay(%.0f)\n", __FUNCTION__, __LINE__, vehicle1->id, vehicle2->id, *O_encounter, tail_1, head_1, *edge_length, T_tail_1, T_head_1, T_tail_2, T_head_2, T_threshold, *T_encounter, *D_encounter);
 #endif /* ] */
 					/* perform the double integral for encounter probability. */
-					*P_encounter = GSL_TPD_Encounter_Probability_For_Gamma_Distribution(D_head_2,
-							D_head_std_2,
-							D_tail_1,
-							D_tail_std_1,
-							0,
-							param->communication_packet_ttl,
-							t_1,
-							t_2);
+					//D_tail_std_1 = D_tail_std_1 / 20;
+					//D_head_std_2 = D_head_std_2 / 20;
+					//if (D_tail_std_1 < 2.5)
+					//	D_tail_std_1 = 2.5;
+					//if (D_head_std_2 < 2.5)
+					//	D_head_std_2 = 2.5;
 
+				//	*P_encounter = GSL_TPD_Encounter_Probability_For_Gamma_Distribution(
+				//			D_head_2, 
+				//			D_head_std_2,
+				//			D_tail_1,/*D_head_2,*/
+				//			D_tail_std_1,
+				//			0,
+				//			param->communication_packet_ttl,
+				//			t_1,						
+				//			t_2);
+
+					*P_encounter = GSL_TPD_Encounter_Probability_For_Gamma_Distribution(
+						D_head_2,
+						D_head_std_2,
+						D_head_1,/*D_head_2,*/										
+						D_head_std_1,
+						0,
+						param->communication_packet_ttl,
+						t_1,						
+						t_2);
+
+					//if (vehicle1->id==1) 
+					#ifdef TPD_FORWARD_LOG
+						printf("         taehwan01022157 TPD Encounter Probability %d->%d (s2=%.2f s1=%.2f) P=%.4f %s\n",vehicle2->id,vehicle1->id,D_head_std_2,D_tail_std_1,*P_encounter,(vehicle1->id==1?"*":""));
+						printf("  [%d]: D_tail_2 = %0.f D_head_2 = %0.f T_tail_2 = %0.f T_head_2 = %0.f  [%d]: D_tail_1 = %0.f D_head_1 = %0.f T_tail_1 = %0.f T_head_1 = %0.f EncounterTime = %0.f\n", vehicle2->id, D_tail_2, D_head_2, T_tail_2, T_head_2, vehicle1->id, D_tail_1, D_head_1, T_tail_1, T_head_1, *T_encounter);
+					#endif
+					
+					//	printf(" head2-tail2 = %.2f       t_2 = %.2f\n", head_2 - tail_2, t_2);
+					//	TPD_Print_Vehicle_Trajectory(vehicle2);
+					//	TPD_Print_Vehicle_Trajectory(vehicle1);
+					//	TPD_Print_Vehicle_Encounter_Area_Compared(vehicle1, vehicle2);
+						//*P_encounter = 1;		
+
+			//printf("         taehwan12012020 TPD Probability %d->%d time=%.2f P=%.2f\n",vehicle2->id,vehicle1->id,*T_encounter,*P_encounter);
+				        //printf("         taehwan12012105 TPD Probability ttl=%.2f\n",param->communication_packet_ttl);
+					// taehwan 20141226 pass
+					//return TRUE;
 					if(*P_encounter >= param->tpd_encounter_probability_threshold)
+					{
+						return TRUE;
+					}
+				}
+			}
+			///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			if ((tail_1 == tail_2) && (head_1 == head_2) && ((T_tail_1 + margin_time <= T_head_2) && (T_head_1 >= T_tail_2 + margin_time)))
+		//	if ((tail_1 == head_2) && (head_1 == tail_2) && ((D_tail_1 <= D_head_2) && (D_head_1 >= D_tail_2)))		
+			{								
+				*edge_length = path_ptr1->next->weight;	
+				*T_encounter = (*edge_length + vehicle1->speed*T_tail_1 + vehicle2->speed*T_tail_2) / (vehicle1->speed + vehicle2->speed);	
+				//*D_encounter = *T_encounter - current_time;
+				*D_encounter = *T_encounter - T_threshold;		
+				*O_encounter = (*T_encounter - T_tail_1)*vehicle1->speed;
+				*tail_vertex = tail_1;			
+				*head_vertex = head_1;			
+
+				if ((*D_encounter >= 0) && (*T_encounter >= T_threshold))
+				{
+#if TPD_ENCOUNTER_TRACE_FLAG /* [ */
+					printf("%s:%d vehicle1(%d) and vehicle2(%d) encounter at the offset(%.0f) in the edge(%d, %d) of length(%.0f): vehicle1[%.0f,%.0f] and vehicle2[%.0f,%.0f] with T_threshold(%.0f), encounter time(%.0f), encounter delay(%.0f)\n", __FUNCTION__, __LINE__, vehicle1->id, vehicle2->id, *O_encounter, tail_1, head_1, *edge_length, T_tail_1, T_head_1, T_tail_2, T_head_2, T_threshold, *T_encounter, *D_encounter);
+#endif /* ] */
+					/* perform the double integral for encounter probability. */
+					//D_tail_std_1 = D_tail_std_1 / 20;
+					//D_head_std_2 = D_head_std_2 / 20;
+					//if (D_tail_std_1 < 2.5)
+					//	D_tail_std_1 = 2.5;
+					//if (D_head_std_2 < 2.5)
+					//	D_head_std_2 = 2.5;
+					*P_encounter = GSL_TPD_Encounter_Probability_For_Gamma_Distribution(
+						D_head_2,
+						D_head_std_2,
+						D_head_1,/*D_head_2,*/
+						D_head_std_1,
+						0,
+						param->communication_packet_ttl,
+						t_1,
+						t_2);
+					//if (vehicle1->id==1) 
+
+				#ifdef TPD_FORWARD_LOG
+					printf("        jinyong TPD Forwarding Probability %d->%d (s2=%.2f s1=%.2f) P=%.4f %s\n", vehicle2->id, vehicle1->id, D_head_std_2, D_head_std_1, *P_encounter, (vehicle1->id == 1 ? "*" : ""));
+					printf("  [%d]: D_tail_2 = %0.f D_head_2 = %0.f T_tail_2 = %0.f T_head_2 = %0.f  [%d]: D_tail_1 = %0.f D_head_1 = %0.f T_tail_1 = %0.f T_head_1 = %0.f\n", vehicle2->id, D_tail_2, D_head_2, T_tail_2, T_head_2, vehicle1->id, D_tail_1, D_head_1, T_tail_1, T_head_1);
+				#endif
+
+				//	TPD_Print_Vehicle_Trajectory(vehicle2);
+				//	TPD_Print_Vehicle_Trajectory(vehicle1);
+				//	TPD_Print_Vehicle_Forward_Area_Compared(vehicle1, vehicle2);
+					//*P_encounter = 1;		
+
+					//printf("         taehwan12012020 TPD Probability %d->%d time=%.2f P=%.2f\n",vehicle2->id,vehicle1->id,*T_encounter,*P_encounter);
+					//printf("         taehwan12012105 TPD Probability ttl=%.2f\n",param->communication_packet_ttl);
+					// taehwan 20141226 pass
+					//return TRUE;
+					if (*P_encounter >= param->tpd_encounter_probability_threshold)
+					{
+						return TRUE;
+					}
+				}
+			}
+
+
+
+
+			path_ptr2 = path_ptr2->next;
+		}
+
+		path_ptr1 = path_ptr1->next;
+	}
+
+	return FALSE;
+}
+
+boolean TPD_Compute_Forward_Probability(parameter_t *param,
+	struct_vehicle_t *vehicle1,
+	struct_vehicle_t *vehicle2,
+	double T_threshold,
+	int *tail_vertex,
+	int *head_vertex,
+	double *edge_length,
+	double *P_encounter,
+	double *T_encounter,
+	double *D_encounter,
+	double *O_encounter)
+{ /* compute the encounter probability (called P_encounter) of vehicle1 and
+  vehicle2 that are expected to encounter in the edge (tail_vertex, head_vertex)
+  of length edge_length and return the boolean flag to indicate whether these
+  two vehicles will encounter with some probability.
+  Note: T_threshold is the encounter time of vehicle and its parent vehicle
+  that is used to determine the valid encounter of two vehicles during the
+  selection of child vehicles in the predicted encounter graph. */
+	int tail_1 = 0, head_1 = 0; //the tail vertex and head vertex of the edge visited by vehicle1	
+	int tail_2 = 0, head_2 = 0; //the tail vertex and head vertex of the edge visited by vehicle2	
+	double T_tail_1 = 0, T_head_1 = 0; //the average arrival times for the tail vertex and head vertex of the edge visited by vehicle1	
+	double T_tail_2 = 0, T_head_2 = 0; //the average arrival times for the tail vertex and head vertex of the edge visited by vehicle2
+	struct_path_node *path_ptr1 = NULL; //pointer to the tail vertex of the current edge along the path of vehicle1
+	struct_path_node *path_ptr2 = NULL; //pointer to the tail vertex of the current edge along the path of vehicle2
+	double T_tail_1_std = 0, T_head_1_std = 0; //the standard deviations of the arrival times for the tail vertex and head vertex of the edge visited by vehicle1	€
+	double T_tail_2_std = 0, T_head_2_std = 0; //the standard deviations of the arrival times for the tail vertex and head vertex of the edge visited by vehicle2
+	boolean flag1 = TRUE, flag2 = TRUE; //flags to indicate the current edge
+	double length1 = 0, length2 = 0; //edge lengths
+
+#if 0 /* [ */
+	double unit_length_travel_time = param->vehicle_unit_length_mean_travel_time; //travel time for the unit length
+	double unit_length_travel_time_variance = param->vehicle_unit_length_travel_time_variance; //travel time variance for the unit length
+#else
+	double unit_length_travel_time_1 = vehicle1->unit_length_mean_travel_time; //vehicle1's travel time for the unit length
+	double unit_length_travel_time_variance_1 = vehicle1->unit_length_travel_time_variance; //vehicle1's travel time variance for the unit length
+	double unit_length_travel_time_2 = vehicle2->unit_length_mean_travel_time; //vehicle2's travel time for the unit length
+	double unit_length_travel_time_variance_2 = vehicle2->unit_length_travel_time_variance; //vehicle2's travel time variance for the unit length
+#endif /* ] */
+
+
+	double D_tail_1 = 0, D_tail_2 = 0; //the average travel times for vehicle1 and vehicle2 from their current position to their tail vertex along their trajectory
+	double D_head_1 = 0, D_head_2 = 0; //the average travel times for vehicle1 and vehicle2 from their current position to their head vertex along their trajectory 
+	double D_tail_var_1 = 0, D_tail_var_2 = 0; //the travel time variances for vehicle1 and vehicle2 from their current position to their tail vertex along their trajectory
+	double D_head_var_1 = 0, D_head_var_2 = 0; //the travel time variances for vehicle1 and vehicle2 from their current position to their head vertex along their trajectory
+	double D_tail_std_1 = 0, D_tail_std_2 = 0; //the travel time standard deviations for vehicle1 and vehicle2 from their current position to their tail vertex along their trajectory
+	double D_head_std_1 = 0, D_head_std_2 = 0; //the travel time standard deviations for vehicle1 and vehicle2 from their current position to their head vertex along their trajectory
+	double t_1 = 0; //the travel time in the encountered edge of vehicle1
+	double t_2 = 0; //the travel time in the encountered edge of vehicle2
+	int vehicle1_path_current_edge_tail = atoi(vehicle1->path_ptr->vertex); //the tail id of the current edge of vehicle1
+	int vehicle2_path_current_edge_tail = atoi(vehicle2->path_ptr->vertex); //the tail id of the current edge of vehicle2
+
+	for (path_ptr1 = vehicle1->path_ptr; path_ptr1 != vehicle1->path_list->prev;)
+	{
+		tail_1 = atoi(path_ptr1->vertex);
+		head_1 = atoi(path_ptr1->next->vertex);
+		T_tail_1 = path_ptr1->expected_arrival_time;					
+		T_head_1 = path_ptr1->next->expected_arrival_time;					
+	
+		/* check whether encounter time is later than T_threhold */
+		if (T_tail_1 < T_threshold)				
+		{
+			path_ptr1 = path_ptr1->next;
+			continue;
+		}
+
+		//if(flag1 == TRUE)
+		if (vehicle1_path_current_edge_tail == tail_1)			
+		{
+			length1 = path_ptr1->next->weight - vehicle1->path_current_edge_offset;	
+			flag1 = FALSE;
+			D_tail_1 = 0;										
+			D_tail_var_1 = 0;
+			D_head_1 = length1*unit_length_travel_time_1;		
+			D_head_var_1 = length1*length1*unit_length_travel_time_variance_1;	
+        }
+		else
+		{
+			length1 = path_ptr1->next->weight;					
+			D_tail_1 = D_head_1;								
+			D_tail_var_1 = D_head_var_1;						
+			D_head_1 += length1*unit_length_travel_time_1;		
+			D_head_var_1 += length1*length1*unit_length_travel_time_variance_1;	
+		}
+
+		D_tail_std_1 = sqrt(D_tail_var_1);		//?œì??¸ì°¨
+		D_head_std_1 = sqrt(D_head_var_1);
+
+		t_1 = length1*unit_length_travel_time_1;		
+		flag2 = TRUE;
+		for (path_ptr2 = vehicle2->path_ptr; path_ptr2 != vehicle2->path_list->prev;)
+		{
+			tail_2 = atoi(path_ptr2->vertex);
+			head_2 = atoi(path_ptr2->next->vertex);										
+			T_tail_2 = path_ptr2->expected_arrival_time;
+			T_head_2 = path_ptr2->next->expected_arrival_time;
+
+			/* check whether encounter time is later than T_threhold */
+			if (T_tail_2 < T_threshold)												
+			{
+				path_ptr2 = path_ptr2->next;
+				continue;
+			}
+
+			//if(flag2 == TRUE)
+			if (vehicle2_path_current_edge_tail == tail_2)
+			{
+				length2 = path_ptr2->next->weight - vehicle2->path_current_edge_offset;	
+				flag2 = FALSE;
+				D_tail_2 = 0;
+				D_tail_var_2 = 0;
+				D_head_2 = length2*unit_length_travel_time_2;
+				D_head_var_2 = length2*length2*unit_length_travel_time_variance_2;
+			}
+			else
+			{
+				length2 = path_ptr2->next->weight;				
+				D_tail_2 = D_head_2;
+				D_tail_var_2 = D_head_var_2;
+				D_head_2 += length2*unit_length_travel_time_2;
+				D_head_var_2 += length2*length2*unit_length_travel_time_variance_2;
+			}
+
+			D_tail_std_2 = sqrt(D_tail_var_2);
+			D_head_std_2 = sqrt(D_head_var_2);		
+
+			//t_2 = length1*unit_length_travel_time; //Error: length1 must be replaced with length2.
+			t_2 = length2*unit_length_travel_time_2;
+
+			/* check whether vehicle1 and vehicle2 encounter in edge (tail_1, head_1) */
+			//if((tail_1 == head_2) && (head_1 == tail_2) && (T_tail_1 <= T_head_2) && (T_head_1 >= T_tail_2))
+			/* taehwan 20140726 */
+			int margin_time = g_margin_time;		
+			// Apply Margin for preventing missing case
+			//if((tail_1 == head_2) && (head_1 == tail_2) && (T_tail_1+ margin_time <= T_head_2) && (T_head_1 >= T_tail_2+ margin_time))
+			if ((tail_1 == tail_2) && (head_1 == head_2) && ((T_tail_1 + margin_time <= T_head_2) && (T_head_1 >= T_tail_2 + margin_time)))
+			{								
+				*edge_length = path_ptr1->next->weight;	
+				*T_encounter = (*edge_length + vehicle1->speed*T_tail_1 + vehicle2->speed*T_tail_2) / (vehicle1->speed + vehicle2->speed);	
+				//*D_encounter = *T_encounter - current_time;
+				*D_encounter = *T_encounter - T_threshold;	
+				*O_encounter = (*T_encounter - T_tail_1)*vehicle1->speed;
+				*tail_vertex = tail_1;		
+				*head_vertex = head_1;		
+
+				if ((*D_encounter >= 0) && (*T_encounter >= T_threshold))
+				{
+#if TPD_ENCOUNTER_TRACE_FLAG /* [ */
+					printf("%s:%d vehicle1(%d) and vehicle2(%d) encounter at the offset(%.0f) in the edge(%d, %d) of length(%.0f): vehicle1[%.0f,%.0f] and vehicle2[%.0f,%.0f] with T_threshold(%.0f), encounter time(%.0f), encounter delay(%.0f)\n", __FUNCTION__, __LINE__, vehicle1->id, vehicle2->id, *O_encounter, tail_1, head_1, *edge_length, T_tail_1, T_head_1, T_tail_2, T_head_2, T_threshold, *T_encounter, *D_encounter);
+#endif /* ] */
+					/* perform the double integral for encounter probability. */
+					//D_tail_std_1 = D_tail_std_1 / 20;
+					//D_head_std_2 = D_head_std_2 / 20;
+					//if (D_tail_std_1 < 2.5)
+					//	D_tail_std_1 = 2.5;
+					//if (D_head_std_2 < 2.5)
+					//	D_head_std_2 = 2.5;
+					*P_encounter = GSL_TPD_Encounter_Probability_For_Gamma_Distribution(
+						D_head_2,
+						D_head_std_2,
+						D_tail_1,/*D_head_2,*/
+						D_tail_std_1,
+						0,
+						param->communication_packet_ttl,
+						t_1,
+						t_2);
+					//if (vehicle1->id==1) 
+					printf("         taehwan01022157 TPD Probability %d->%d (s2=%.2f s1=%.2f) P=%.4f %s\n", vehicle2->id, vehicle1->id, D_head_std_2, D_tail_std_1, *P_encounter, (vehicle1->id == 1 ? "*" : ""));
+					//*P_encounter = 1;		
+
+					//printf("         taehwan12012020 TPD Probability %d->%d time=%.2f P=%.2f\n",vehicle2->id,vehicle1->id,*T_encounter,*P_encounter);
+					//printf("         taehwan12012105 TPD Probability ttl=%.2f\n",param->communication_packet_ttl);
+					// taehwan 20141226 pass
+					//return TRUE;
+					if (*P_encounter >= param->tpd_encounter_probability_threshold)
 					{
 						return TRUE;
 					}
@@ -1371,6 +1873,19 @@ boolean TPD_Compute_Encounter_Probability(parameter_t *param,
 
 	return FALSE;
 }
+
+
+void test_gamma2()
+{
+	double prob = 0;
+	prob = GSL_TPD_Encounter_Probability_For_Gamma_Distribution(209.20,22.96,278.95,24.08,0,3000,117.45,119.55); printf("TEST = %.4f / 0.0143\n",prob);
+	prob = GSL_TPD_Encounter_Probability_For_Gamma_Distribution(146.82,/*15.53*/2.5,105.75,/*15.25*/2.5,0,3000,80.07,88.09); printf("TEST = %.4f / 0.9712\n",prob);
+	//prob = GSL_TPD_Encounter_Probability_For_Gamma_Distribution(226.00,20.88,495.85,33.33,0,3000,61.98,75.33); printf("TEST = %.4f / 0\n",prob);
+	prob = GSL_TPD_Encounter_Probability_For_Gamma_Distribution(509.20,2.5,504.44,2.5,0,3000,117.45,117.45); printf("TEST = %.4f / 000000\n",prob);
+	//prob = GSL_TPD_Encounter_Probability_For_Gamma_Distribution(129.11,14.73,106.76,15.39,0,3000,80.07,77.47); printf("TEST = %.4f / 0.8573\n",prob);
+
+}
+
 
 double TPD_Compute_EDR_For_Encounter_Graph(adjacency_list_queue_t *G)
 { /* compute the EDR (Expected Delivery Ratio) for the given encounter graph G 
@@ -1801,6 +2316,7 @@ double TPD_Compute_EDD_For_Encounter_Graph(adjacency_list_queue_t *G)
 					 * pointed by pQueueNode can forward its packets to the
 					 * child node pointed by r */
 					P_forward = TPD_Compute_Forwarding_Probability(&(pQueueNode->neighbor_list), i);
+					
 					if(pQueueNode->EDR <= ERROR_TOLERANCE_FOR_REAL_ARITHMETIC)
 					{
 						Q_forward = 0;
@@ -1823,7 +2339,6 @@ double TPD_Compute_EDD_For_Encounter_Graph(adjacency_list_queue_t *G)
 		if(count == pQueueNode->neighbor_list.size)
 		{
 			pQueueNode->EDD_flag = TRUE;	
-
 			/* enqueue the parent nodes for p into Q for Breadth First Search (BFS) */
 			q = &(pQueueNode->parent_list.head);
 			for(i = 0; i < pQueueNode->parent_list.size; i++)
@@ -1852,6 +2367,8 @@ double TPD_Compute_EDD_For_Encounter_Graph(adjacency_list_queue_t *G)
 	/** destroy Q */
 	DestroyQueue((queue_t*)&Q);
 
+	if (G->src_vehicle_gnode->id == 193)
+		printf("\n\n)))))))) %.2f\n",G->src_vehicle_gnode->EDD);
 	return G->src_vehicle_gnode->EDD;
 }
 
@@ -2017,6 +2534,8 @@ boolean TPD_Is_There_Next_Carrier_At_Intersection_For_AP(parameter_t *param,
 	intersection_gnode = AP->gnode; //let AP's gnode become intersection gnode
 	neighboring_intersection_gnode = intersection_gnode;
 	size = (int)intersection_gnode->weight;
+	//printf("**** %d\n",size);
+	
 	for(i = 0; i < size; i++) //for-1
 	{
 		neighboring_intersection_gnode = neighboring_intersection_gnode->next;
@@ -2026,7 +2545,8 @@ boolean TPD_Is_There_Next_Carrier_At_Intersection_For_AP(parameter_t *param,
 		edge_type = OUTGOING_EDGE;
 		tail_node_for_next_forwarding_edge = intersection_gnode->vertex;
 		head_node_for_next_forwarding_edge = neighboring_intersection_gnode->vertex;
-    
+  
+	    //printf("TPD_Is_There_Next_Carrier_On_Road_Segment_Incident_To_Intersection_For_AP\n");
 		/* check whether the tail node is one of APs; ap_flag is used to determine next carrier */
 		flag = TPD_Is_There_Next_Carrier_On_Road_Segment_Incident_To_Intersection_For_AP(param, 
 				current_time,
@@ -2041,9 +2561,18 @@ boolean TPD_Is_There_Next_Carrier_At_Intersection_For_AP(parameter_t *param,
 				 * on the road segment incident to an intersection corresponding to 
 				 * tail_node for access point AP and return the pointer to the next 
 				 * carrier through *next_carrier */
+     	// taehwan 20140714
+		/*if ( current_time > 7221 && current_time < 7222) 
+		{
+			printf(">>> (%s,%s)=%s\n",
+					tail_node_for_next_forwarding_edge,
+					head_node_for_next_forwarding_edge,
+					flag==TRUE?"TRUE":"FALSE");
+		}*/
+
 
 		if(flag) //if-1
-		{ 
+		{
 			/* select a vehicle with the maximum next carrier EDR as a next carrier */
 			switch(param->vehicle_vanet_forwarding_type) //switch-1
 			{
@@ -2069,10 +2598,20 @@ boolean TPD_Is_There_Next_Carrier_At_Intersection_For_AP(parameter_t *param,
 			} //end of switch-1
 		} //end of if-1
 	} //end of for-1
-
+	
+	/* taehwan 20140715 */
+	/*
+	if  (current_time > 7221 && current_time < 7222 )
+	{
+		printf("**** %s\n",(result==TRUE?"TRUE":"FALSE"));
+	}*/
 	/* check whether next_carrier's EDR is greater than the tpd_delivery_probability_threshold */
 	if(result == TRUE)
 	{
+		printf("%.2f] TPD Is There Next Carrier At Intersection For AP %d\n"
+				,current_time
+				,(*next_carrier)->id);
+
 		if((*next_carrier)->EDR_for_V2V > param->tpd_delivery_probability_threshold)
 		{
 #if TPD_AP_FORWARDING_TRACE_FLAG /* [*/
@@ -2089,6 +2628,7 @@ boolean TPD_Is_There_Next_Carrier_At_Intersection_For_AP(parameter_t *param,
     				param->vanet_table.dst_vnode->current_pos_in_digraph.head_node,
     				param->vanet_table.dst_vnode->current_pos_in_digraph.offset);
 #endif /* ] */
+
 			return result;
 		}
 		result = FALSE;
@@ -2141,22 +2681,38 @@ boolean TPD_Is_There_Next_Carrier_On_Road_Segment_Incident_To_Intersection_For_A
 	}
 
 	size = pEdgeNode->vehicle_movement_list.size;
+        pMoveNode = &(pEdgeNode->vehicle_movement_list.head);
+		
+#ifdef TPD_FORWARD_LOG
+	if (size > 0)
+	{   
+		printf("%.2f] taehwan11241605 TPD IsDareNext %s:%s size:%d (",current_time,tail_node,head_node,size);
+   		for(i = 0; i < size ; i++)
+		{
+			pMoveNode = pMoveNode->next;
+			printf("%s%d",(i==0?"":","),pMoveNode->vnode->id);
+		}
+		printf(")\n");
+	}
+#endif
+
 	pMoveNode = &(pEdgeNode->vehicle_movement_list.head);
 	for(i = 0; i < size && flag == FALSE; i++) //for-1
 	{
 		pMoveNode = pMoveNode->next;
-
 		if(edge_type == OUTGOING_EDGE) //for the outgoing edge of the intersection (i.e., tail_node)
 			distance = pMoveNode->offset;
 		else //for the incoming edge of the intersection (i.e., head_node)
 			distance = fabs(pEdgeNode->weight - pMoveNode->offset);
-   
+ 
 		/* check the distance between two vehicles */
 		if(distance > param->communication_range)
 		{
 			continue;
 		}
 
+		printf("         taehwan11291022 TPD IsDareNext  %d in range at %.2f(%s-%s)\n",pMoveNode->vnode->id,pMoveNode->vnode->path_current_edge_offset,pMoveNode->vnode->current_pos_in_digraph.tail_node,pMoveNode->vnode->current_pos_in_digraph.head_node);
+		//TPD_Print_Vehicle_Trajectory(pMoveNode->vnode);
 		/** Next carrier selection rule: We select a vehicle with the highest EDR as
 		 * a next carrier */
 #if TPD_DISPLAY_PREDICTED_ENCOUNTER_GRAPH_FOR_AP_FLAG /* [ */
@@ -2172,7 +2728,17 @@ boolean TPD_Is_There_Next_Carrier_On_Road_Segment_Incident_To_Intersection_For_A
 				param->vanet_table.dst_vnode,
 				FALSE);
 #endif /* ] */
-
+		/* taehwan 20140714 */
+		/*
+		if (current_time > 7221 && current_time < 7222)
+			printf("%.2f < %.2f : %.2f >= %.2f && %.2f < %.2f\n",
+					distance,param->communication_range,
+					pMoveNode->vnode->EDR_for_V2V,
+					param->tpd_delivery_probability_threshold,
+					pMoveNode->vnode->EDD_for_V2V,
+					min_neighbor_EDD);
+		*/
+         	//printf("%.2f] taehwan11241605 TPD IsDareNext ___ num:%d/%d veh_id:%3d EDR:%2.2f %s\n",current_time,i,size,pMoveNode->vnode->id,pMoveNode->vnode->EDR_for_V2V,(pMoveNode->vnode->EDR_for_V2V?"<-----":""));
 		/* select a next vehicle that has a higher EDR */
 		switch(param->vehicle_vanet_forwarding_type) //switch-1
 		{
@@ -2181,6 +2747,7 @@ boolean TPD_Is_There_Next_Carrier_On_Road_Segment_Incident_To_Intersection_For_A
 				if((pMoveNode->vnode->EDR_for_V2V >= param->tpd_delivery_probability_threshold) && (pMoveNode->vnode->EDD_for_V2V < min_neighbor_EDD))
 				//if(pMoveNode->vnode->EDR_for_V2V > max_neighbor_EDR)
 				{ //we also check vehicles' EDRs
+					//printf("taehwan11252101 TPD IsDareNext ___ more than threshold:%2.2f\n",param->tpd_delivery_probability_threshold);
 					min_neighbor_EDD = pMoveNode->vnode->EDD_for_V2V;
 					//max_neighbor_EDR = pMoveNode->vnode->EDR_for_V2V;
 					*next_carrier = pMoveNode->vnode; /* update the pointer of neighbor 
@@ -2797,6 +3364,8 @@ int TPD_Perform_BFS_For_Encounter_Graph(adjacency_list_queue_t *G, boolean displ
 	struct_vehicle_t *parent_vehicle = NULL; //pointer to a parent vehicle
 	struct_vehicle_t *dst_vehicle = NULL; //pointer to the destination vehicle
 	double current_time = smpl_time(); //current simultation time
+    
+	//printf("TPD_Perform_BFS_For_Encounter_Graph\n");
 
 	/** initialize Q */
 	InitQueue((queue_t*)&Q, QTYPE_ADJACENCY_LIST_POINTER);
@@ -2966,12 +3535,13 @@ int TPD_Print_Vehicle_Trajectory(struct_vehicle_t *vehicle)
 	double length = 0; //edge length
 	double prev_edge_delay = 0; //travel delay for the previous edge
 
+	//return 0;
 	for(path_ptr = vehicle->path_ptr; path_ptr != vehicle->path_list->prev;)
 	{
 		tail = atoi(path_ptr->vertex);
 		head = atoi(path_ptr->next->vertex);
 		T_tail = path_ptr->expected_arrival_time;
-		T_head = path_ptr->next->expected_arrival_time;
+		T_head = path_ptr->next->expected_arrival_time;					
 		length = path_ptr->next->weight;
 		printf("->[%d: t=%0.f, d=%0.f]", tail, T_tail, prev_edge_delay);
 
@@ -2982,6 +3552,57 @@ int TPD_Print_Vehicle_Trajectory(struct_vehicle_t *vehicle)
 	printf("->[%d: t=%0.f, d=%0.f]", head, T_head, prev_edge_delay);
 	printf("\n");
 	return 0;
+}
+void TPD_Print_Vehicle_Forward_Area_Compared(struct_vehicle_t *comparision_vehicle,struct_vehicle_t *current_vehicle)
+{
+	struct_path_node *path_ptr1 = NULL; //pointer to the tail vertex of an edge along the path of comparision_vehicle
+	struct_path_node *path_ptr2 = NULL; //pointer to the tail vertex of an edge along the path of current_vehicle
+	int tail_1 = 0, head_1 = 0; //the tail vertex and head vertex of the edge visited by comparision_vehicle
+	int tail_2 = 0, head_2 = 0; //the tail vertex and head vertex of the edge visited by comparision_vehicle
+
+	for (path_ptr1 = comparision_vehicle->path_ptr; path_ptr1 != comparision_vehicle->path_list->prev;)
+	{
+		tail_1 = atoi(path_ptr1->vertex);
+		head_1 = atoi(path_ptr1->next->vertex);
+		for (path_ptr2 = current_vehicle->path_ptr; path_ptr2 != current_vehicle->path_list->prev;)
+		{
+			tail_2 = atoi(path_ptr2->vertex);
+			head_2 = atoi(path_ptr2->next->vertex);
+			if ((tail_1 == tail_2) && (head_1 == head_2))
+			{			
+				printf("jinyong Vehicle:[%d, %d] TPD Vehicle_Forward_Area %d->%d \n", current_vehicle->id, comparision_vehicle->id, tail_1, head_1);
+			}
+			path_ptr2 = path_ptr2->next;
+		}
+		path_ptr1 = path_ptr1->next;
+	}
+}
+void TPD_Print_Vehicle_Encounter_Area_Compared(struct_vehicle_t *comparision_vehicle, struct_vehicle_t *current_vehicle)
+{
+	struct_path_node *path_ptr1 = NULL; //pointer to the tail vertex of an edge along the path of comparision_vehicle
+	struct_path_node *path_ptr2 = NULL; //pointer to the tail vertex of an edge along the path of current_vehicle
+	int tail_1 = 0, head_1 = 0; //the tail vertex and head vertex of the edge visited by comparision_vehicle
+	int tail_2 = 0, head_2 = 0; //the tail vertex and head vertex of the edge visited by comparision_vehicle
+	for (path_ptr1 = comparision_vehicle->path_ptr; path_ptr1 != comparision_vehicle->path_list->prev;)
+	{
+		tail_1 = atoi(path_ptr1->vertex);
+		head_1 = atoi(path_ptr1->next->vertex);
+		for (path_ptr2 = current_vehicle->path_ptr; path_ptr2 != current_vehicle->path_list->prev;)
+		{
+			tail_2 = atoi(path_ptr2->vertex);
+			head_2 = atoi(path_ptr2->next->vertex);
+			if ((tail_1 == head_2) && (head_1 == tail_2))
+			{
+				printf("jinyong Vehicle:[%d, %d] TPD Vehicle_Encounter_Area %d->%d \n", current_vehicle->id, comparision_vehicle->id, tail_2, head_2);
+			}
+			path_ptr2 = path_ptr2->next;
+		}
+		path_ptr1 = path_ptr1->next;
+	}
+
+
+
+
 }
 
 boolean TPD_Is_There_Next_Carrier_On_Road_Segment(parameter_t *param, 
@@ -3462,13 +4083,13 @@ boolean TPD_Is_There_Next_Carrier_On_Two_Way_Road_Segment_For_Greedy_Routing(par
 				param,
 				vehicle,
 				param->vanet_table.dst_vnode,
-				TRUE); //recompute vehicle's EDRã…‡
+				TRUE); //recompute vehicle's EDR??
 #else
 		TPD_Compute_EDR_and_EDD(current_time, 
 				param,
 				vehicle,
 				param->vanet_table.dst_vnode,
-				FALSE); //recompute vehicle's EDRã…‡
+				FALSE); //recompute vehicle's EDR??
 #endif /* ] */
 		if((*next_carrier)->EDD_for_V2V < vehicle->EDD_for_V2V)
 		//if((*next_carrier)->EDR_for_V2V > vehicle->EDR_for_V2V)
@@ -3758,7 +4379,6 @@ boolean TPD_Check_Child_Vehicle_In_Encounter_Graph(double current_time, struct_v
 				vehicle->id, G->carrier_vehicle_gnode->id);
 		exit(1);                                		
 	}
-
 	Q = &(G->carrier_vehicle_gnode->neighbor_list);
 	ptr = &(Q->head);
 	for(i = 0; i< Q->size; i++)
@@ -3787,3 +4407,9 @@ adjacency_list_queue_node_t* TPD_Find_GraphNode_In_EncounterGraph(adjacency_list
 
 	return gnode;
 }
+
+
+
+
+
+
