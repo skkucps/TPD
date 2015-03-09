@@ -278,7 +278,7 @@ typedef enum _vanet_forwarding_scheme_t
 #define STRING_FOR_VANET_FORWARDING_EPIDEMIC "EPIDEMIC"
 #define STRING_FOR_VANET_FORWARDING_TSF "TSF"
 #define STRING_FOR_VANET_FORWARDING_TMA "TMA"
-#define STRING_FOR_VANET_FORWARDING_TADB "TADB"
+#define STRING_FOR_VANET_FORWARDING_TADB "TaDB"
 
 /* distribution type */
 typedef enum _distribution_type_t
