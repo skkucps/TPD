@@ -6600,7 +6600,8 @@ char* get_vanet_forwarding_scheme_name(vanet_forwarding_scheme_t scheme)
 	STRING_FOR_VANET_FORWARDING_TPD,
 	STRING_FOR_VANET_FORWARDING_EPIDEMIC,
 	STRING_FOR_VANET_FORWARDING_TSF,
-	STRING_FOR_VANET_FORWARDING_TMA
+	STRING_FOR_VANET_FORWARDING_TMA,
+	STRING_FOR_VANET_FORWARDING_TADB
 	};
 		
 	return vanet_forwarding_scheme[scheme];
