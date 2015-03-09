@@ -264,7 +264,8 @@ typedef enum _vanet_forwarding_scheme_t
   VANET_FORWARDING_TPD = 3,  //TPD
   VANET_FORWARDING_EPIDEMIC = 4, //Epidemic Routing
   VANET_FORWARDING_TSF = 5,  //TSF
-  VANET_FORWARDING_TMA = 6   //TMA
+  VANET_FORWARDING_TMA = 6,   //TMA
+  VANET_FORWARDING_TADB = 7   //TaDB
 } vanet_forwarding_scheme_t;
 
 #define NUMBER_OF_VANET_FORWARDING_SCHEME 7 
@@ -277,6 +278,7 @@ typedef enum _vanet_forwarding_scheme_t
 #define STRING_FOR_VANET_FORWARDING_EPIDEMIC "EPIDEMIC"
 #define STRING_FOR_VANET_FORWARDING_TSF "TSF"
 #define STRING_FOR_VANET_FORWARDING_TMA "TMA"
+#defein STRING_FOR_VANET_FORWARDING_TADB "TADB"
 
 /* distribution type */
 typedef enum _distribution_type_t
