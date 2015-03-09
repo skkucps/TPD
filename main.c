@@ -4907,19 +4907,6 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 				/* enqueue packet into packet queue */
 				pPacket = (packet_queue_node_t*) Enqueue((queue_t*)pAP->packet_queue, (queue_node_t*)&packet);
 				
-#ifdef BSMA_20150227
-				// taehwan 20150227 test for BSMA
-				/** construct a multicast tree according to the multicast-tree-construction algorithm */
-				if(APQ.size == 1)
-				{
-					ST_Construct_Multicast_Tree(param, current_time, pAP->vertex, &DVQ, &FTPQ, &ESQ, pGlobalPacket);
-				} 
-				else
-				{
-					ST_Construct_Multicast_Forest(param, current_time, &APQ, &DVQ, &FTPQ, &ESQ, pGlobalPacket);
-				}
-#endif				
-
 				/** set up packet's target point or vehicle trajectory with vehicle's trajectory according to target point selection type */
 				if(param->data_forwarding_mode == DATA_FORWARDING_MODE_DOWNLOAD)
 				//@START OF DATA_FORWARDING_MODE_DOWNLOAD
@@ -4933,7 +4920,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 						if(param->communication_packet_ttl_override_flag)
 						{
 							//param->communication_packet_ttl =  Compute_TravelTime_For_VehicleTrajectory(param, current_time, &(pPacket->vehicle_trajectory)); //compute the travel time for the path distance for the trajectory from the start position to the end position in the vehicle trajectory. 
-
+							printf("Compute_PathDistance_From_CurrentPosition_To_EndPosition_With_VehicleTrajectory_Along_With_PathTravelTime_And_Deviation\n");
 							travel_distance = Compute_PathDistance_From_CurrentPosition_To_EndPosition_With_VehicleTrajectory_Along_With_PathTravelTime_And_Deviation(param, current_time, pPacket, &travel_time, &travel_time_deviation);
 							//compute the vehicle's path distance, the path travel time and the deviation for the trajectory from the current position to the end position on the vehicle trajectory where destination_vehicle_travel_distance is the distance from the trajectory's start position to the destination vehicle's end position on its vehicle trajectory
 
