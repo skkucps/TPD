@@ -2170,6 +2170,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 				{ /* Update forwarding table Gr under upload mode */
 					if(param->vehicle_vanet_edd_computation_model == VANET_EDD_COMPUTATION_BASED_ON_STOCHASTIC_MODEL)
 					{
+						printf("VANET_EDD_COMPUTATION_BASED_ON_STOCHASTIC_MODEL\n");
 						/*@ Note that for the multiple-AP network, the EDDs for the multiple APs are computed only under the Upload forwarding mode. */
 						//if((param->data_forwarding_mode == DATA_FORWARDING_MODE_UPLOAD) && (ap_table_for_Gr.number > 1))
 						if(ap_table_for_Gr.number > 1) //the case where the number of APs is more than 1
@@ -2179,6 +2180,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 					}
 					else
 					{
+						printf("VANET_EDD_COMPUTATION_BASED_ON_SHORTEST_PATH_MODEL\n");
 						//printf("\n*******  VANET_EDD_EDR_UPDATE : AP number = %d********* \n\n",ap_table_for_Gr.number);
 						if(ap_table_for_Gr.number > 1) //the case where the number of APs is more than 1						
 						{ //Even for multiple APs, it is enough to update the EDDs for one AP because the update is related to all-pairs-shortest path tables D, S, and M in param.vanet_information_table; this update lets the individual vehicles be able to construct a convoy on the same road segment by letting them set their EDD towards the intersection having the AP of index 0 
