@@ -202,9 +202,6 @@ void convertDigraphToCoordinate(int head,int tail,double offset,double length)
 double g_vehicle_point[VEHICLE_COUNT_MAX][3]={0,};
 int g_vehicle_have_packet[VEHICLE_COUNT_MAX]={0,};
 
-/* taehwan 20140725 */
-int g_next_carrier = 0;
-
 /* taehwan 20140728 */
 boolean g_is_packet_forwarding = FALSE;
 boolean g_gnuplot_init = FALSE;
@@ -3317,55 +3314,19 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 							} //end of if-4.2.3.1		      
 
 							/* try to find a better neighboring vehicle than this vehicle to send the AP's packets to a next carrier */
-#if 0 /* [ */
-							//if(vehicle->id == 93 && current_time >= 8229)
-							if(vehicle->id == 22 || vehicle->id == 1)
-							{
-								printf("(vehicle=%d,t=%.2f,pos=<%.2f,%.2f>)\n",
-										vehicle->id,current_time,
-										vehicle->current_pos.x,
-										vehicle->current_pos.y);
-								/*printf("%s:%d [%.0f] vehicle(%d) is traced\n",
-										__FUNCTION__, __LINE__,
-										(float)current_time, vehicle->id);*/
-							}
-#endif /* ] */   
 							if(param->vanet_forwarding_scheme == VANET_FORWARDING_TPD) //if-4.2.3.2
-							{
-								//printf("@@@@@@ TPDITNCAIF AP\n");	
-								//printf("TPD_AP %.2f %d",current_time,Gr_size);							
+							{							
 								flag = TPD_Is_There_Next_Carrier_At_Intersection_For_AP(param, current_time, pAP, Gr, Gr_size, &next_carrier);
-								/* taehwan 20140712 checking vehicle 71*/
-								/*
-								if (vehicle->id == 71 && (current_time < 7222 && current_time > 7221))
-								{
-									printf("* %.2f vehicle %d was checked... flag is %s *********\n",
-											current_time,vehicle->id,(flag==TRUE?"TRUE":"FALSE"));
-								}*/
-								/*if (flag == TRUE)
-								{
-									printf("  --> %d %d\n",Gr_size,next_carrier->id);
-								} else {
-									printf("  %d\n",Gr_size);
-								}*/	
-
-								/*if (next_carrier != NULL && next_carrier->id == 193)
-									printf("\n%.2f] Is There Next Carrier ? %s = %d\n\n",
-											current_time, (flag == TRUE?"YES":"NO"),vehicle->id);
-								*/
+								
 								if(flag == TRUE) //if-4.2.3.2.1
 								{
-									forward_count = VADD_Forward_Packet_From_AP_To_Next_Carrier(param, current_time, pAP, next_carrier, &packet_delivery_statistics, &discard_count); //AP forwards its packet(s) to the neighboring vehicle and the log for the packet(s) is written into the packet logging file.
-									
-										
-									/* taehwan 20140730 */
-									// check packet ttl has expired
+									//AP forwards its packet(s) to the neighboring vehicle and the log for the packet(s) is written into the packet logging file.
+									forward_count = VADD_Forward_Packet_From_AP_To_Next_Carrier(param, current_time, pAP, next_carrier, &packet_delivery_statistics, &discard_count); 
+																		
 									if (discard_count > 0)
 									{
-										printf("TTL EXPIRED AT AP 3222 TPD! - %d %d\n",vehicle->id,discard_count);
+										printf("TPD) TTL EXPIRED AT AP! - %d %d\n",vehicle->id,discard_count);
 									}
-
-
 									
 									if(next_carrier == NULL) //if-4.2.3.2.1.1
 									{
@@ -3379,9 +3340,6 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 												,current_time, vehicle->id
 												,next_carrier->id
 												,next_carrier->arrival_time);
-
-										/* taehwan 20140725 */
-										g_next_carrier = next_carrier->id;
 									}
 								} //end of if-4.2.3.2.1
 							} //end of if-4.2.3.2
@@ -3470,9 +3428,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 							/* taehwan 20140712 checking forwarding */
 							//printf("does_vehicle_convoy_have_packet == TRUE\n");
 							VADD_Forward_Packet_To_Destination_Vehicle(param, current_time, vehicle->ptr_convoy_queue_node->leader_vehicle, destination_vehicle, &packet_delivery_statistics); //vehicle forwards its packet(s) to the destination vehicle
-							/* taehwan 20140725 */
-							g_next_carrier = 0;
-
+							
 							if(param->data_forwarding_mode == DATA_FORWARDING_MODE_DOWNLOAD)
 							{
 								/* update the vehicle convoy leader's EDD_for_download after forwarding */
@@ -3483,11 +3439,6 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 						/* check whether the vehicle's convoy (i.e., the vehicle's convoy leader) has packets or not */
 						if(does_vehicle_have_packet(vehicle)) //if-1.1.2
 						{
-							/* taehwan 20140712 checking forwarding */
-							g_next_carrier = 0;
-
-							//printf("does_vehicle_have_packet == TRUE\n");
-							
 							VADD_Forward_Packet_To_Destination_Vehicle(param, current_time, vehicle, destination_vehicle, &packet_delivery_statistics); //vehicle forwards its packet(s) to the destination vehicle
 							/* taehwan 20140725 */
 							if(param->data_forwarding_mode == DATA_FORWARDING_MODE_DOWNLOAD)
@@ -3562,9 +3513,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 										printf("TPD find next carrier (%d) at intersection, arrived at(%.2f)\n"
 												,next_carrier->id
 												,next_carrier->arrival_time);
-										/* taehwan 20140725 */
-										g_next_carrier = next_carrier->id;
-
+										
 										VADD_Forward_Packet_To_Next_Carrier(param, current_time, vehicle, next_carrier, &packet_delivery_statistics, &discard_count); //vehicle forwards its packet(s) to the next carrier pointed by next_carrier
 							
 									/* taehwan 20140730 */
@@ -3829,9 +3778,6 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 												,next_carrier->id
 												,next_carrier->arrival_time);
 											
-											/* taehwan 20140725 */
-											g_next_carrier = next_carrier->id;
-
 											VADD_Forward_Packet_To_Next_Carrier(param, current_time, vehicle, next_carrier, &packet_delivery_statistics, &discard_count); //vehicle forwards its packet(s) to the next carrier pointed by next_carrier
 									
 											/* taehwan 20140730 */
@@ -3943,10 +3889,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 										printf("TPD find next carrier (%d) at intersection, arrived at(%.2f)\n"
 												,next_carrier->id
 												,next_carrier->arrival_time);
-										
-										/* taehwan 20140725 */
-										g_next_carrier = next_carrier->id;
-										
+																				
 										VADD_Forward_Packet_To_Next_Carrier(param, current_time, vehicle, next_carrier, &packet_delivery_statistics, &discard_count); //vehicle forwards its packet(s) to the next carrier pointed by next_carrier
 											
 										/* taehwan 20140730 */
@@ -4201,15 +4144,10 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 											printf("TPD find next carrier (%d) on road segment, arrived at(%.2f)\n"
 												,next_carrier->id
 												,next_carrier->arrival_time);
-											
-											/* taehwan 20140725 */
-											g_next_carrier = next_carrier->id;
-										
+																					
 											//vehicle forwards its packet(s) to the next carrier pointed by next_carrier
 											VADD_Forward_Packet_To_Next_Carrier(param, current_time, vehicle, next_carrier, &packet_delivery_statistics, &discard_count); 
 											
-											/* taehwan 20140725 */
-											g_next_carrier = next_carrier->id;
 										} //end of if-4.1.1.1.1.1
 									} //end of if-4.1.1.1.1
 									else if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD) //else if-4.1.1.1.2
