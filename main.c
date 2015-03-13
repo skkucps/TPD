@@ -329,10 +329,10 @@ void gnuplot_vehicle_point(double currenttime)
 			if (g_vehicle_have_packet[i] == 1)
 			{
 				isPacketForwarding = TRUE;
-				if (i != 26) g_vehicle_have_packet[26] = 2; 	
-                		if (i != 156) g_vehicle_have_packet[156] = 2;
-				if (i != 43) g_vehicle_have_packet[43] = 2; 
-                		if (i != 95) g_vehicle_have_packet[95] = 2;
+				//if (i != 26) g_vehicle_have_packet[26] = 2; 	
+                //if (i != 156) g_vehicle_have_packet[156] = 2;
+				//if (i != 43) g_vehicle_have_packet[43] = 2; 
+                //if (i != 95) g_vehicle_have_packet[95] = 2;
 			}
 		}
 		if (isPacketForwarding == TRUE)
@@ -3801,7 +3801,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 										flag = VADD_Is_There_Next_Carrier_On_Road_Segment(param, current_time, vehicle, Gr, Gr_size, &next_carrier);
 										if(flag) //if-2.1.1.1.2.1
 										{
-											printf("VADD_Forward_Packet_To_Next_Carrier : %d (%s->%s) -> %d (%s->%s) : %s\n",
+											printf("VADD_Forward_Packet_To_Next_Carrier : %3d (%2s->%2s) -> %3d (%2s->%2s) : %s\n",
 												vehicle->id,vehicle->current_pos_in_digraph.tail_node,vehicle->current_pos_in_digraph.head_node,
 												next_carrier->id,next_carrier->current_pos_in_digraph.tail_node,next_carrier->current_pos_in_digraph.head_node,
 												(vehicle->current_pos_in_digraph.eid == next_carrier->current_pos_in_digraph.eid ? "Forward":"Encounter"));
@@ -4168,7 +4168,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 										flag = VADD_Is_There_Next_Carrier_On_Road_Segment(param, current_time, vehicle, Gr, Gr_size, &next_carrier);
 										if(flag) //if-4.1.1.1.2.1
 										{
-											printf("VADD_Forward_Packet_To_Next_Carrier : %d (%s->%s) -> %d (%s->%s) : %s\n",
+											printf("VADD_Forward_Packet_To_Next_Carrier : %3d (%2s->%2s) -> %3d (%2s->%2s) : %s\n",
 												vehicle->id,vehicle->current_pos_in_digraph.tail_node,vehicle->current_pos_in_digraph.head_node,
 												next_carrier->id,next_carrier->current_pos_in_digraph.tail_node,next_carrier->current_pos_in_digraph.head_node,
 												(vehicle->current_pos_in_digraph.eid == next_carrier->current_pos_in_digraph.eid ? "Forward":"Encounter"));
