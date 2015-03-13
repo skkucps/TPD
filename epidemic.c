@@ -851,7 +851,7 @@ boolean EPIDEMIC_Is_There_Next_Carrier_On_One_Way_Road_Segment(parameter_t *para
 
 #if 1 /* [ */
 	/* update the EDDs and EDD_SDs of vehicle and its convoy head for V2V data delivery */
-	if((param->data_forwarding_mode == DATA_FORWARDING_MODE_V2V) && (param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD || param->vanet_forwarding_scheme == VANET_FORWARDING_EPIDEMIC))
+	if((param->data_forwarding_mode == DATA_FORWARDING_MODE_V2V) && (param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD || param->vanet_forwarding_scheme == VANET_FORWARDING_EPIDEMIC || param->vanet_forwarding_scheme == VANET_FORWARDING_TADB))
 	{
 		VADD_Update_Vehicle_EDD_And_EDD_SD_For_V2V_Data_Delivery(current_time, param, vehicle, G, G_size, source_intersection_id);
 		VADD_Update_Vehicle_EDD_And_EDD_SD_For_V2V_Data_Delivery(current_time, param, vehicle->ptr_convoy_queue_node->leader_vehicle, G, G_size, source_intersection_id);
@@ -983,7 +983,7 @@ boolean EPIDEMIC_Is_There_Next_Carrier_On_One_Way_Road_Segment(parameter_t *para
 				}
 				else if(param->data_forwarding_mode == DATA_FORWARDING_MODE_V2V)
 				{
-					if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD)
+					if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD || param->vanet_forwarding_scheme == VANET_FORWARDING_TADB)
 					{
 						if(distance <= param->communication_range) 
 						{
@@ -1101,7 +1101,7 @@ boolean EPIDEMIC_Is_There_Next_Carrier_On_Two_Way_Road_Segment(parameter_t *para
 
 #if 1 /* [ */
 	/* update the EDDs and EDD_SDs of vehicle and its convoy head for V2V data delivery */
-	if((param->data_forwarding_mode == DATA_FORWARDING_MODE_V2V) && (param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD || param->vanet_forwarding_scheme == VANET_FORWARDING_EPIDEMIC))
+	if((param->data_forwarding_mode == DATA_FORWARDING_MODE_V2V) && (param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD || param->vanet_forwarding_scheme == VANET_FORWARDING_EPIDEMIC || param->vanet_forwarding_scheme == VANET_FORWARDING_TADB))
 	{
 		VADD_Update_Vehicle_EDD_And_EDD_SD_For_V2V_Data_Delivery(current_time, param, vehicle, G, G_size, source_intersection_id);
 		VADD_Update_Vehicle_EDD_And_EDD_SD_For_V2V_Data_Delivery(current_time, param, vehicle->ptr_convoy_queue_node->leader_vehicle, G, G_size, source_intersection_id);
@@ -1162,7 +1162,8 @@ boolean EPIDEMIC_Is_There_Next_Carrier_On_Two_Way_Road_Segment(parameter_t *para
 				}
 				else if(param->data_forwarding_mode == DATA_FORWARDING_MODE_V2V)
 				{
-					if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD || param->vanet_forwarding_scheme == VANET_FORWARDING_EPIDEMIC)
+					if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD || param->vanet_forwarding_scheme == VANET_FORWARDING_EPIDEMIC
+					|| param->vanet_forwarding_scheme == VANET_FORWARDING_TADB)
 					{
 						if(distance <= param->communication_range)
 						{ //we also check vehicles' EDDs
@@ -1230,7 +1231,7 @@ boolean EPIDEMIC_Is_There_Next_Carrier_On_Two_Way_Road_Segment(parameter_t *para
 				}
 				else if(param->data_forwarding_mode == DATA_FORWARDING_MODE_V2V)
 				{
-					if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD)
+					if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD || param->vanet_forwarding_scheme == VANET_FORWARDING_TADB)
 					{
 						if(distance <= param->communication_range) 
 						{
@@ -1296,7 +1297,7 @@ boolean EPIDEMIC_Is_There_Next_Carrier_On_Two_Way_Road_Segment(parameter_t *para
 
 #if 0 /* [ */
 	/* update the EDDs and EDD_SDs of vehicle and its convoy head for V2V data delivery */
-	if((param->data_forwarding_mode == DATA_FORWARDING_MODE_V2V) && (param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD || param->vanet_forwarding_scheme == VANET_FORWARDING_EPIDEMIC))
+	if((param->data_forwarding_mode == DATA_FORWARDING_MODE_V2V) && (param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD || param->vanet_forwarding_scheme == VANET_FORWARDING_EPIDEMIC || param->vanet_forwarding_scheme == VANET_FORWARDING_TADB))
 	{
 		VADD_Update_Vehicle_EDD_And_EDD_SD_For_V2V_Data_Delivery(current_time, param, vehicle, G, G_size, source_intersection_id);
 		VADD_Update_Vehicle_EDD_And_EDD_SD_For_V2V_Data_Delivery(current_time, param, vehicle->ptr_convoy_queue_node->leader_vehicle, G, G_size, source_intersection_id);
@@ -1358,7 +1359,8 @@ boolean EPIDEMIC_Is_There_Next_Carrier_On_Two_Way_Road_Segment(parameter_t *para
 				}
 				else if(param->data_forwarding_mode == DATA_FORWARDING_MODE_V2V)
 				{
-					if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD || param->vanet_forwarding_scheme == VANET_FORWARDING_EPIDEMIC)
+					if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD || param->vanet_forwarding_scheme == VANET_FORWARDING_EPIDEMIC
+					|| param->vanet_forwarding_scheme == VANET_FORWARDING_TADB)
 					{
 						if(distance <= param->communication_range)
 						{ //we also check vehicles' EDDs
@@ -1416,7 +1418,7 @@ boolean EPIDEMIC_Is_There_Next_Carrier_On_Two_Way_Road_Segment(parameter_t *para
 				}
 				else if(param->data_forwarding_mode == DATA_FORWARDING_MODE_V2V)
 				{
-					if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD)
+					if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD || param->vanet_forwarding_scheme == VANET_FORWARDING_TADB)
 					{
 						if(distance <= param->communication_range) 
 						{
