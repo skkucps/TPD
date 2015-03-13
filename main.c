@@ -3380,7 +3380,9 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								flag = EPIDEMIC_Is_There_Next_Carrier_At_Intersection_For_AP(param, current_time, pAP, Gr_set[target_point_id-1], Gr_set_size[target_point_id-1], &FTQ, &next_carrier);
 								if(flag == TRUE) //if-4.2.3.3.1
 								{
-									forward_count = VADD_Forward_Packet_From_AP_To_Next_Carrier(param, current_time, pAP, next_carrier, &packet_delivery_statistics, &discard_count); //AP forwards its packet(s) to the neighboring vehicle and the log for the packet(s) is written into the packet logging file.
+									//AP forwards its packet(s) to the neighboring vehicle and the log for the packet(s) is written into the packet logging file.
+									forward_count = VADD_Forward_Packet_From_AP_To_Next_Carrier(param, current_time, pAP, next_carrier, &packet_delivery_statistics, &discard_count); 
+									printf("target_point_id = %d\n",target_point_id);
 									if(next_carrier == NULL) //if-4.2.3.3.1.1
 									{
 										printf("%s:%d VADD_Forward_Packet_From_AP_To_Next_Carrier() returns no next_carrier along with positive forward_count(%d) with discard_count(%d)\n",
@@ -3798,6 +3800,10 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 										flag = VADD_Is_There_Next_Carrier_On_Road_Segment(param, current_time, vehicle, Gr, Gr_size, &next_carrier);
 										if(flag) //if-2.1.1.1.2.1
 										{
+											printf("VADD_Forward_Packet_To_Next_Carrier : %d (%s->%s) -> %d (%s->%s)\n",
+												vehicle->id,vehicle->current_pos_in_digraph->tail_node,vehicle->current_pos_in_digraph->head_node,
+												next_carrier->id,next_carrier->current_pos_in_digraph->tail_node,next_carrier->current_pos_in_digraph->head_node);
+												
 											if(param->vehicle_vanet_forwarding_type == VANET_FORWARDING_BASED_ON_CONVOY) //if-2.1.1.1.2.1.1
 											{
 												VADD_Forward_Packet_To_Next_Carrier(param, current_time, vehicle, next_carrier->ptr_convoy_queue_node->leader_vehicle, &packet_delivery_statistics, &discard_count); //vehicle forwards its packet(s) to the next carrier pointed by next_carrier's convoy head
@@ -4160,7 +4166,9 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 										flag = VADD_Is_There_Next_Carrier_On_Road_Segment(param, current_time, vehicle, Gr, Gr_size, &next_carrier);
 										if(flag) //if-4.1.1.1.2.1
 										{
-											printf("VADD_Forward_Packet_To_Next_Carrier : %d -> %d\n",vehicle->id,next_carrier->id);
+											printf("VADD_Forward_Packet_To_Next_Carrier : %d (%s->%s) -> %d (%s->%s)\n",
+												vehicle->id,vehicle->current_pos_in_digraph->tail_node,vehicle->current_pos_in_digraph->head_node,
+												next_carrier->id,next_carrier->current_pos_in_digraph->tail_node,next_carrier->current_pos_in_digraph->head_node);
 											
 											if(param->vehicle_vanet_forwarding_type == VANET_FORWARDING_BASED_ON_CONVOY) //if-4.1.1.1.2.1.1
 											{
