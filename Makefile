@@ -20,8 +20,8 @@ GSL_SOURCE = gsl-util.c
 GSL_OBJECT = gsl-util.o
 GSL_DEBUG_OBJECT = gsl-util.do
 
-CFLAG1= -c -O $(PG_FLAG)  $(GSL_INCLUDE)
-CFLAG2= -c -g $(PG_FLAG) $(GSL_INCLUDE)
+CFLAG1= -c -g $(PG_FLAG) $(GSL_INCLUDE)
+CFLAG2= -c -O $(PG_FLAG) $(GSL_INCLUDE)
 CFLAG3= -o $@ $(OS_TYPE) $(PG_FLAG)
 CFLAG4= -o $@ $(PG_FLAG) $(GSL_LIBRARY)
 CFLAG5= -o $@ -g $(PG_FLAG) $(GSL_LIBRARY)
