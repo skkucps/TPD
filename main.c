@@ -54,6 +54,14 @@ double g_current_time;
 int g_gnuplot_option=0;
 int g_color_flag = 1;
 
+void toggle_forward_color()
+{
+	if (g_color_flag == 1)
+		g_color_flag = 2;
+	else
+		g_color_flag = 1;
+}
+
 int* get_intersection_visit_count()
 {
 	int i,j;
@@ -291,7 +299,14 @@ void gnuplot_vehicle_point(double currenttime)
 
 			temp_color = g_vehicle_color[i];
 
-			temp_color = g_vehicle_have_packet[i];
+			if (g_vehicle_have_packet[i] == 1)
+			{
+				temp_color = g_color_flag;
+			}
+			else
+			{
+				temp_color = g_vehicle_have_packet[i];
+			}			
 
 			if (g_vehicle_point[i][0] == 0)
 			{
@@ -3806,7 +3821,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 												vehicle->id,vehicle->current_pos_in_digraph.tail_node,vehicle->current_pos_in_digraph.head_node,
 												next_carrier->id,next_carrier->current_pos_in_digraph.tail_node,next_carrier->current_pos_in_digraph.head_node,
 												(vehicle->current_pos_in_digraph.eid == next_carrier->current_pos_in_digraph.eid ? "Forward":"Encounter"));
-												
+											toggle_forward_color();	
 											if(param->vehicle_vanet_forwarding_type == VANET_FORWARDING_BASED_ON_CONVOY) //if-2.1.1.1.2.1.1
 											{
 												VADD_Forward_Packet_To_Next_Carrier(param, current_time, vehicle, next_carrier->ptr_convoy_queue_node->leader_vehicle, &packet_delivery_statistics, &discard_count); //vehicle forwards its packet(s) to the next carrier pointed by next_carrier's convoy head
@@ -4173,7 +4188,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 												vehicle->id,vehicle->current_pos_in_digraph.tail_node,vehicle->current_pos_in_digraph.head_node,
 												next_carrier->id,next_carrier->current_pos_in_digraph.tail_node,next_carrier->current_pos_in_digraph.head_node,
 												(vehicle->current_pos_in_digraph.eid == next_carrier->current_pos_in_digraph.eid ? "Forward":"Encounter"));
-											
+											toggle_forward_color();
 											if(param->vehicle_vanet_forwarding_type == VANET_FORWARDING_BASED_ON_CONVOY) //if-4.1.1.1.2.1.1
 											{
 												VADD_Forward_Packet_To_Next_Carrier(param, current_time, vehicle, next_carrier->ptr_convoy_queue_node->leader_vehicle, &packet_delivery_statistics, &discard_count); //vehicle forwards its packet(s) to the next carrier pointed by next_carrier's convoy head
@@ -4250,11 +4265,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 
 				if ( does_vehicle_have_packet(vehicle) == TRUE)
 				{
-					g_vehicle_have_packet[vehicle->id] = g_color_flag;
-					if (g_color_flag == 1)
-						g_color_flag = 2;
-					else
-						g_color_flag = 1;
+					g_vehicle_have_packet[vehicle->id] = 1;
 				} else
 				{
 					g_vehicle_have_packet[vehicle->id] = 0;				
