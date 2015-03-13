@@ -4160,6 +4160,8 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 										flag = VADD_Is_There_Next_Carrier_On_Road_Segment(param, current_time, vehicle, Gr, Gr_size, &next_carrier);
 										if(flag) //if-4.1.1.1.2.1
 										{
+											printf("VADD_Forward_Packet_To_Next_Carrier : %d -> %d\n",vehicle->id,next_carrier->id);
+											
 											if(param->vehicle_vanet_forwarding_type == VANET_FORWARDING_BASED_ON_CONVOY) //if-4.1.1.1.2.1.1
 											{
 												VADD_Forward_Packet_To_Next_Carrier(param, current_time, vehicle, next_carrier->ptr_convoy_queue_node->leader_vehicle, &packet_delivery_statistics, &discard_count); //vehicle forwards its packet(s) to the next carrier pointed by next_carrier's convoy head
