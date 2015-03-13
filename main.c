@@ -3289,7 +3289,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								if(flag == TRUE)
 								{
 									VADD_Forward_Packet_From_AP_To_Next_Carrier(param, current_time, pAP, next_carrier, &packet_delivery_statistics, &discard_count); //AP forwards its packet(s) to the neighboring vehicle and the log for the packet(s) is written into the packet logging file.
-									printf("target_point_id = %d\n",target_point_id);
+									
 									/* taehwan 20140730 */
 									// check packet ttl has expired
 									if (discard_count > 0)
@@ -3322,7 +3322,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								{
 									//AP forwards its packet(s) to the neighboring vehicle and the log for the packet(s) is written into the packet logging file.
 									forward_count = VADD_Forward_Packet_From_AP_To_Next_Carrier(param, current_time, pAP, next_carrier, &packet_delivery_statistics, &discard_count); 
-									printf("target_point_id = %d\n",target_point_id);									
+																		
 									if (discard_count > 0)
 									{
 										printf("TPD) TTL EXPIRED AT AP! - %d %d\n",vehicle->id,discard_count);
@@ -3383,7 +3383,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								{
 									//AP forwards its packet(s) to the neighboring vehicle and the log for the packet(s) is written into the packet logging file.
 									forward_count = VADD_Forward_Packet_From_AP_To_Next_Carrier(param, current_time, pAP, next_carrier, &packet_delivery_statistics, &discard_count); 
-									printf("target_point_id = %d\n",target_point_id);
+									
 									if(next_carrier == NULL) //if-4.2.3.3.1.1
 									{
 										printf("%s:%d VADD_Forward_Packet_From_AP_To_Next_Carrier() returns no next_carrier along with positive forward_count(%d) with discard_count(%d)\n",
@@ -5260,7 +5260,7 @@ Note that for the static forwarding, the path from the AP to the target point in
 				  /** send the packet(s) to an appropriate next carrier vehicle */
                                   /* try to send the AP's packets to the neighboring vehicle */
 				  flag = VADD_Is_There_Next_Carrier_At_Intersection_For_AP(param, current_time, pAP, Gr, Gr_size, &FTQ, &next_carrier);
-				  printf("target_point_id = %d\n",target_point_id);
+				  
                                   //@Note: next_carrier is the convoy tail for the source vehicle of vid=1; on the other hand, for the other vehicles, next_carrier is the convoy leader.
                                   if(flag) //if-1
                                   {
