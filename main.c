@@ -3362,7 +3362,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 							else if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD
 							|| param->vanet_forwarding_scheme == VANET_FORWARDING_TADB) //else if-4.2.3.3 
 							{
-#if 0 /* [ */
+#if 1 /* [ */
 								target_point_id = GetTargetPoint_For_AP_For_V2V_Data_Delivery(param, current_time, pAP->vertex, pDestinationVehicleQueueNode->vnode, &FTQ, Gr_set_number, Gr_set, Gr_set_size, &EDD_p, &EAD_p);
 
 								/* set AP's target point to target_point_id again */
@@ -3372,8 +3372,11 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								flag = VADD_Is_There_Next_Carrier_At_Intersection_For_AP(param, current_time, pAP, Gr_set[target_point_id-1], Gr_set_size[target_point_id-1], &FTQ, &next_carrier);
 								if(flag == TRUE) //if-4.2.3.3.1
 								{
-									forward_count = VADD_Forward_Packet_From_AP_To_Next_Carrier(param, current_time, pAP, next_carrier, &packet_delivery_statistics, &discard_count); //AP forwards its packet(s) to the neighboring vehicle and the log for the packet(s) is written into the packet logging file.
+									//AP forwards its packet(s) to the neighboring vehicle and the log for the packet(s) is written into the packet logging file.
+									forward_count = VADD_Forward_Packet_From_AP_To_Next_Carrier(param, current_time, pAP, next_carrier, &packet_delivery_statistics, &discard_count); 
+									
 									printf("target_point_id = %d\n",target_point_id);
+									
 									if(next_carrier == NULL) //if-4.2.3.3.1.1
 									{
 										printf("%s:%d VADD_Forward_Packet_From_AP_To_Next_Carrier() returns no next_carrier along with positive forward_count(%d) with discard_count(%d)\n",
