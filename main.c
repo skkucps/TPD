@@ -4150,7 +4150,8 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 											
 										} //end of if-4.1.1.1.1.1
 									} //end of if-4.1.1.1.1
-									else if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD) //else if-4.1.1.1.2
+									else if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD ||
+									        param->vanet_forwarding_scheme == VANET_FORWARDING_TADB) //else if-4.1.1.1.2
 									{
 										flag = VADD_Is_There_Next_Carrier_On_Road_Segment(param, current_time, vehicle, Gr, Gr_size, &next_carrier);
 										if(flag) //if-4.1.1.1.2.1
