@@ -3801,8 +3801,8 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 										if(flag) //if-2.1.1.1.2.1
 										{
 											printf("VADD_Forward_Packet_To_Next_Carrier : %d (%s->%s) -> %d (%s->%s)\n",
-												vehicle->id,vehicle->current_pos_in_digraph->tail_node,vehicle->current_pos_in_digraph->head_node,
-												next_carrier->id,next_carrier->current_pos_in_digraph->tail_node,next_carrier->current_pos_in_digraph->head_node);
+												vehicle->id,vehicle->current_pos_in_digraph.tail_node,vehicle->current_pos_in_digraph.head_node,
+												next_carrier->id,next_carrier->current_pos_in_digraph.tail_node,next_carrier->current_pos_in_digraph.head_node);
 												
 											if(param->vehicle_vanet_forwarding_type == VANET_FORWARDING_BASED_ON_CONVOY) //if-2.1.1.1.2.1.1
 											{
@@ -4167,8 +4167,8 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 										if(flag) //if-4.1.1.1.2.1
 										{
 											printf("VADD_Forward_Packet_To_Next_Carrier : %d (%s->%s) -> %d (%s->%s)\n",
-												vehicle->id,vehicle->current_pos_in_digraph->tail_node,vehicle->current_pos_in_digraph->head_node,
-												next_carrier->id,next_carrier->current_pos_in_digraph->tail_node,next_carrier->current_pos_in_digraph->head_node);
+												vehicle->id,vehicle->current_pos_in_digraph.tail_node,vehicle->current_pos_in_digraph.head_node,
+												next_carrier->id,next_carrier->current_pos_in_digraph.tail_node,next_carrier->current_pos_in_digraph.head_node);
 											
 											if(param->vehicle_vanet_forwarding_type == VANET_FORWARDING_BASED_ON_CONVOY) //if-4.1.1.1.2.1.1
 											{
