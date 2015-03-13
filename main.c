@@ -52,6 +52,7 @@ int g_segment_visit_count[INTERSECTION_COUNT][4];
 int g_intersection_visit_count[INTERSECTION_COUNT]={0,};
 double g_current_time;
 int g_gnuplot_option=0;
+int g_color_flag = 1;
 
 int* get_intersection_visit_count()
 {
@@ -4249,7 +4250,11 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 
 				if ( does_vehicle_have_packet(vehicle) == TRUE)
 				{
-					g_vehicle_have_packet[vehicle->id] = 1;				
+					g_vehicle_have_packet[vehicle->id] = g_color_flag;
+					if (g_color_flag == 1)
+						g_color_flag = 2;
+					else
+						g_color_flag = 1;
 				} else
 				{
 					g_vehicle_have_packet[vehicle->id] = 0;				
