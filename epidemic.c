@@ -912,7 +912,8 @@ boolean EPIDEMIC_Is_There_Next_Carrier_On_One_Way_Road_Segment(parameter_t *para
 				}
 				else if(param->data_forwarding_mode == DATA_FORWARDING_MODE_V2V)
 				{
-					if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD || param->vanet_forwarding_scheme == VANET_FORWARDING_EPIDEMIC)
+					if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD || param->vanet_forwarding_scheme == VANET_FORWARDING_EPIDEMIC
+					|| param->vanet_forwarding_scheme == VANET_FORWARDING_TADB)
 					{
 						if(distance <= param->communication_range)
 						{ //we also check vehicles' EDDs

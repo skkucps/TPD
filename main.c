@@ -2200,7 +2200,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 					}
 					
 					/** compute EDD and EDD_SD for VADD, TBD, Epidemic Routing so that they can work for the V2V data delivery */
-					if((param->data_forwarding_mode == DATA_FORWARDING_MODE_V2V) && (param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD || param->vanet_forwarding_scheme == VANET_FORWARDING_EPIDEMIC))
+					if((param->data_forwarding_mode == DATA_FORWARDING_MODE_V2V) && (param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD || param->vanet_forwarding_scheme == VANET_FORWARDING_EPIDEMIC || param->vanet_forwarding_scheme == VANET_FORWARDING_TADB))
 					{
 						VADD_Compute_EDD_And_EDD_SD_Based_On_Stochastic_Model_For_V2V_Data_Delivery(param, Gr, Gr_size, Gr_set, Gr_set_size, DEr_set);
 					}
@@ -2481,40 +2481,40 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 				/**@ Note: the vehicle movement registration can be performed at state VANET_EDD_UPDATE just after the schedule of the arrival of this vehicle. Thus, we need to check whether the movement registration of this vehicle has been performed or not. */
 
 				/** register the vehicle's movement into the directional edge queue's vehicle_movement_list */
-                                if((param->vehicle_vanet_acl_measurement_flag == TRUE) && (vehicle->flag_vehicle_movement_queue_registration == FALSE))
-                                  register_vehicle_movement(param, vehicle, current_time, Gr);
+                if((param->vehicle_vanet_acl_measurement_flag == TRUE) && (vehicle->flag_vehicle_movement_queue_registration == FALSE))
+					register_vehicle_movement(param, vehicle, current_time, Gr);
 
-                                if(flag_packet_log)
+                if(flag_packet_log)
 				{
-                                  if((param->vehicle_vanet_acl_measurement_flag != TRUE) && (vehicle->flag_vehicle_movement_queue_registration == FALSE))
+                    if((param->vehicle_vanet_acl_measurement_flag != TRUE) && (vehicle->flag_vehicle_movement_queue_registration == FALSE))
 				    register_vehicle_movement(param, vehicle, current_time, Gr);
 
-				  /* check whether data forwarding mode is download or upload */
-				  if(param->data_forwarding_mode == DATA_FORWARDING_MODE_DOWNLOAD ||
+					/* check whether data forwarding mode is download or upload */
+					if(param->data_forwarding_mode == DATA_FORWARDING_MODE_DOWNLOAD ||
 						  param->data_forwarding_mode == DATA_FORWARDING_MODE_V2V)
-				  {
-				    /* obtain the pointer to the first access point */
-				    pAP =  GetFirstAccessPoint(&APQ);
-				    if(pAP == NULL)
-				    {
-				      printf("After GetFirstAccessPoint(), pAP is NULL!\n");
-				      exit(1);
-				    }
+					{
+						/* obtain the pointer to the first access point */
+						pAP =  GetFirstAccessPoint(&APQ);
+						if(pAP == NULL)
+						{
+							printf("After GetFirstAccessPoint(), pAP is NULL!\n");
+							exit(1);
+						}
+						//compute vehicle's EDD and EDD_SD using the vehicle's offset in directional edge along with real graph Gr and AP table				      				  
+						VADD_Update_Vehicle_EDD_And_EDD_SD(current_time, param, vehicle, pAP->Ga, pAP->Ga_size, &(pAP->ap_table_for_target_point)); 
+					}
+					else
+					{
+						//compute vehicle's EDD and EDD_SD using the vehicle's offset in directional edge along with real graph Gr and AP table
+						VADD_Update_Vehicle_EDD_And_EDD_SD(current_time, param, vehicle, Gr, Gr_size, &ap_table_for_Gr);				    
+					}
 
-				    VADD_Update_Vehicle_EDD_And_EDD_SD(current_time, param, vehicle, pAP->Ga, pAP->Ga_size, &(pAP->ap_table_for_target_point)); //compute vehicle's EDD and EDD_SD using the vehicle's offset in directional edge along with real graph Gr and AP table				      				  
-				  }
-				  else
-				  {
-				    VADD_Update_Vehicle_EDD_And_EDD_SD(current_time, param, vehicle, Gr, Gr_size, &ap_table_for_Gr);
-				    //compute vehicle's EDD and EDD_SD using the vehicle's offset in directional edge along with real graph Gr and AP table
-				  }
-
-				  if((param->vehicle_vanet_forwarding_type == VANET_FORWARDING_BASED_ON_CONVOY) && (vehicle->flag_convoy_registration == FALSE))
-				  {
-				    convoy_join(param, vehicle, current_time, &packet_delivery_statistics); //join vehicle into the convoy preceding the vehicle on the directional edge if the vehicle is within the communication range of the convoy
-				  }
+					if((param->vehicle_vanet_forwarding_type == VANET_FORWARDING_BASED_ON_CONVOY) && (vehicle->flag_convoy_registration == FALSE))
+					{
+						//join vehicle into the convoy preceding the vehicle on the directional edge if the vehicle is within the communication range of the convoy
+						convoy_join(param, vehicle, current_time, &packet_delivery_statistics); 
+					}
 				}
-
 				///* transit to VEHICLE_CHECK state */
 				//delay = 0.0;
 				//schedule(VEHICLE_CHECK, delay, id);
@@ -3343,7 +3343,8 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 									}
 								} //end of if-4.2.3.2.1
 							} //end of if-4.2.3.2
-							else if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD) //else if-4.2.3.3 
+							else if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD
+							|| param->vanet_forwarding_scheme == VANET_FORWARDING_TADB) //else if-4.2.3.3 
 							{
 #if 0 /* [ */
 								target_point_id = GetTargetPoint_For_AP_For_V2V_Data_Delivery(param, current_time, pAP->vertex, pDestinationVehicleQueueNode->vnode, &FTQ, Gr_set_number, Gr_set, Gr_set_size, &EDD_p, &EAD_p);
@@ -3527,7 +3528,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 									} //end of if-1.1.1.2.1.1
 									
 								} //end of if-1.1.1.2.1
-								else if((param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD) && does_vehicle_convoy_have_packet(vehicle, param)) //if-1.1.1.2.2
+								else if((param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD || param->vanet_forwarding_scheme == VANET_FORWARDING_TADB) && does_vehicle_convoy_have_packet(vehicle, param)) //if-1.1.1.2.2
 								{
 									flag = VADD_Is_There_Next_Carrier_At_Intersection(param, current_time, vehicle, Gr_set[vehicle->ptr_convoy_queue_node->leader_vehicle->latest_packet_ptr->target_point_id-1], Gr_set_size[vehicle->ptr_convoy_queue_node->leader_vehicle->latest_packet_ptr->target_point_id-1], &FTQ, &next_carrier);
 									if(flag) //if-1.1.1.2.2.1
@@ -3719,7 +3720,8 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								}
 								else if(param->data_forwarding_mode == DATA_FORWARDING_MODE_V2V)
 								{
-									if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD || param->vanet_forwarding_scheme == VANET_FORWARDING_EPIDEMIC)
+									if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD || param->vanet_forwarding_scheme == VANET_FORWARDING_EPIDEMIC
+									|| param->vanet_forwarding_scheme == VANET_FORWARDING_TADB)
 									{
 										VADD_Update_Vehicle_EDD_And_EDD_SD(current_time, param, vehicle, Gr, Gr_size, &ap_table_for_Gr);
 	
@@ -3790,7 +3792,8 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 
 										} //end of if-2.1.1.1.1.1
 									} //end of if-2.1.1.1.1
-									else if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD) //else if-2.1.1.1.2
+									else if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD
+									|| param->vanet_forwarding_scheme == VANET_FORWARDING_TADB) //else if-2.1.1.1.2
 									{
 										flag = VADD_Is_There_Next_Carrier_On_Road_Segment(param, current_time, vehicle, Gr, Gr_size, &next_carrier);
 										if(flag) //if-2.1.1.1.2.1
@@ -3902,7 +3905,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 
 									} //end of if-2.1.1.2.1.1
 								} //end of if-2.1.1.2.1
-								else if((param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD) && does_vehicle_convoy_have_packet(vehicle, param)) //if-2.1.1.2.2
+								else if((param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD || param->vanet_forwarding_scheme == VANET_FORWARDING_TADB) && does_vehicle_convoy_have_packet(vehicle, param)) //if-2.1.1.2.2
 								{
 									flag = VADD_Is_There_Next_Carrier_At_Intersection(param, current_time, vehicle, Gr_set[vehicle->ptr_convoy_queue_node->leader_vehicle->latest_packet_ptr->target_point_id-1], Gr_set_size[vehicle->ptr_convoy_queue_node->leader_vehicle->latest_packet_ptr->target_point_id-1], &FTQ, &next_carrier);
 									if(flag) //if-2.1.1.2.2.1
@@ -4085,7 +4088,8 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								}
 								else if(param->data_forwarding_mode == DATA_FORWARDING_MODE_V2V)
 								{
-									if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD || param->vanet_forwarding_scheme == VANET_FORWARDING_EPIDEMIC)
+									if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD || param->vanet_forwarding_scheme == VANET_FORWARDING_EPIDEMIC
+									|| param->vanet_forwarding_scheme == VANET_FORWARDING_TADB)
 									{
 										VADD_Update_Vehicle_EDD_And_EDD_SD(current_time, param, vehicle, Gr, Gr_size, &ap_table_for_Gr);
 									}
@@ -5152,7 +5156,8 @@ Note that for the static forwarding, the path from the AP to the target point in
 				/*****************************************/
 				{
 					/* compute a target point for VADD, TBD or Epidemic Routing as vanet forwarding scheme */
-					if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD || param->vanet_forwarding_scheme == VANET_FORWARDING_EPIDEMIC)
+					if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD || param->vanet_forwarding_scheme == VANET_FORWARDING_EPIDEMIC 
+					|| param->vanet_forwarding_scheme == VANET_FORWARDING_TADB)
 					{
 						target_point_id = GetTargetPoint_For_AP_For_V2V_Data_Delivery(param, current_time, pAP->vertex, pDestinationVehicleQueueNode->vnode, &FTQ, Gr_set_number, Gr_set, Gr_set_size, &EDD_p, &EAD_p);
 
