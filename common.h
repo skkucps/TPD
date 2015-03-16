@@ -93,7 +93,7 @@
 //@ Determine whether to include the DEBUG messages
 //#define __DEBUG__
 
-//#define __DEBUG_INTERACTIVE_MODE__
+#define __DEBUG_INTERACTIVE_MODE__
 
 //@this macro constant is used to investigate the packet delay distribution
 //#define __DEBUG_PACKET_DELAY_DISTRIBUTION__
