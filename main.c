@@ -798,7 +798,6 @@ int main(int argc, char** argv)
 				flag_data_forwarding_two_way_forwarding_flag = TRUE;
 				break;
 
-
 		    case 'L':
 		        data_forwarding_link_selection = (data_forwarding_link_selection_t)atoi(optarg);
 	    	    flag_data_forwarding_link_selection = TRUE;
