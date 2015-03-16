@@ -4186,7 +4186,8 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 										flag = VADD_Is_There_Next_Carrier_On_Road_Segment(param, current_time, vehicle, Gr, Gr_size, &next_carrier);
 										if(flag) //if-4.1.1.1.2.1
 										{
-											printf("VADD_Forward_Packet_To_Next_Carrier : %3d (%2s->%2s) -> %3d (%2s->%2s) : %s\n",
+											printf("%.2f] VADD_Forward_Packet_To_Next_Carrier : %3d (%2s,%2s) > %3d (%2s,%2s) : %s\n",
+												current_time,
 												vehicle->id,vehicle->current_pos_in_digraph.tail_node,vehicle->current_pos_in_digraph.head_node,
 												next_carrier->id,next_carrier->current_pos_in_digraph.tail_node,next_carrier->current_pos_in_digraph.head_node,
 												(vehicle->current_pos_in_digraph.eid == next_carrier->current_pos_in_digraph.eid ? "Forward":"Encounter"));
