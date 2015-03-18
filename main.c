@@ -3479,27 +3479,14 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 				if(vehicle->move_type == MOVE_FORWARD) //if-1
 				{
 					if(vehicle->current_pos_in_Gr.offset >= vehicle->edge_length - offset_tolerance) //if-1.1
-					{ //the case where the vehicle arrives at the intersection
-#if TPD_VEHICLE_MOBILITY_TRACE_FLAG
-						/** TRACE vehicle mobility */
-						if((current_time > 7200) && (vehicle->id == 86))
-						{
-							printf("%s:%d: TRACE [%.2f] vehicle(%d)'s position is <%s, %s: %0.f> and its speed is %0.f\n",
-									__FUNCTION__, __LINE__,
-									(float)current_time,
-									vehicle->id, 
-									vehicle->current_pos_in_digraph.tail_node,
-									vehicle->current_pos_in_digraph.head_node,
-									vehicle->current_pos_in_digraph.offset,
-									vehicle->speed);
-						}
-				/***************************/
-#endif
-
-						/** set intersection_flag to TRUE to indicate that vehicle arrices at an intersection */
+					{ 
+						//the case where the vehicle arrives at the intersection
+						/** set intersection_flag to TRUE to indicate that 
+						vehicle arrices at an intersection */
 						intersection_visit_flag = TRUE;
 
-					    /* update vehicle's speed at the intersection using the speed distribution considering vehicle minimum speed and vehicle maximum speed */
+					    /* update vehicle's speed at the intersection using the speed distribution 
+						considering vehicle minimum speed and vehicle maximum speed */
 #if TPD_VEHICLE_SPEED_UPDATE_PER_ROAD_SEGMENT_FLAG
 					    set_vehicle_speed(param, vehicle);
 #endif
@@ -3819,7 +3806,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 										flag = VADD_Is_There_Next_Carrier_On_Road_Segment(param, current_time, vehicle, Gr, Gr_size, &next_carrier);
 										if(flag) //if-2.1.1.1.2.1
 										{
-											printf("%.2f] VADD : %3d (%2s,%2s) > %3d (%2s,%2s) : MOVE FORWARD  : %s\n",
+											printf("%5.2f] VADD : %3d (%2s,%2s) > %3d (%2s,%2s) : MOVE FORWARD  : %s\n",
 												current_time,
 												vehicle->id,vehicle->current_pos_in_digraph.tail_node,vehicle->current_pos_in_digraph.head_node,
 												next_carrier->id,next_carrier->current_pos_in_digraph.tail_node,next_carrier->current_pos_in_digraph.head_node,
@@ -4187,7 +4174,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 										flag = VADD_Is_There_Next_Carrier_On_Road_Segment(param, current_time, vehicle, Gr, Gr_size, &next_carrier);
 										if(flag) //if-4.1.1.1.2.1
 										{
-											printf("%.2f] VADD : %3d (%2s,%2s) > %3d (%2s,%2s) : MOVE BACKWARD : %s\n",
+											printf("%5.2f] VADD : %3d (%2s,%2s) > %3d (%2s,%2s) : MOVE BACKWARD : %s\n",
 												current_time,
 												vehicle->id,vehicle->current_pos_in_digraph.tail_node,vehicle->current_pos_in_digraph.head_node,
 												next_carrier->id,next_carrier->current_pos_in_digraph.tail_node,next_carrier->current_pos_in_digraph.head_node,
