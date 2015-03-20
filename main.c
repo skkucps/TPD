@@ -3482,7 +3482,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 					{ 
 						//the case where the vehicle arrives at the intersection
 						/** set intersection_flag to TRUE to indicate that 
-						vehicle arrices at an intersection */
+						vehicle arrives at an intersection */
 						intersection_visit_flag = TRUE;
 
 					    /* update vehicle's speed at the intersection using the speed distribution 
