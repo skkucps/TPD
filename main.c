@@ -3358,8 +3358,18 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 									}
 								} //end of if-4.2.3.2.1
 							} //end of if-4.2.3.2
-							else if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD
-							|| param->vanet_forwarding_scheme == VANET_FORWARDING_TADB) //else if-4.2.3.3 
+							else if (param->vanet_forwarding_scheme == VANET_FORWARDING_TADB)
+							{
+								/* 
+								TODO for TaDB
+								1.Estimate the link delay and transmission cost on each road segment
+								2.Estimate the expected time for the receiver to get to each road segment
+								3.Select the Target Zone ( tp = tv )
+								4.Select the Transmission Path
+								5.Check next carrier at the intersection & forward packet
+								*/
+							}
+							else if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD) //else if-4.2.3.3 
 							{
 #if 1 /* [ */
 								target_point_id = GetTargetPoint_For_AP_For_V2V_Data_Delivery(param, current_time, pAP->vertex, pDestinationVehicleQueueNode->vnode, &FTQ, Gr_set_number, Gr_set, Gr_set_size, &EDD_p, &EAD_p);
