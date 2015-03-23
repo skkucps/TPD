@@ -3394,7 +3394,34 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								
 								//2.Estimate the expected time for the receiver to get to each intersections of receiver trajectory
 								// receiver = vehicle 1
+								struct_vehicle* receiver_vehicle = get_vehicle(1);
 								
+								if (receiver_vehicle == NULL)
+								{
+									exit(1);
+								}
+								struct_path_node *path_ptr = NULL; 
+								
+								path_ptr = receiver_vehicle->path_list;
+								int intersection = 0;
+								int valid_flag = 0;
+								// Get all intersection on receiver trajectory
+								for(path_ptr = path_list->next; path_ptr != path_list;)								
+								{
+										intersection = atoi(path_ptr->vertex);
+										
+										if (receiver_vehicle->path_ptr == path_ptr)
+										{
+											valid_flag = 1; // flag for valid intersection
+										}
+										
+										if (valid_flag == 1)
+										{
+											// intersection to calculate link cost from src to dst
+										}
+										
+										path_ptr = path_ptr->next;
+								}
 								
 								// Test
 							}
