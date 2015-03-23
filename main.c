@@ -2189,6 +2189,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 							VADD_Compute_EDD_And_EDD_SD_Based_On_Stochastic_Model_For_Multiple_APs(param, Gr, Gr_size, &DEr, &ap_table_for_Gr); //compute the Expected Delivery Delay (EDD) and Expected Delivery Delay Standard Deviation (EDD_SD) based on the stochastic model with graph Gr and directional edge queue DEr.
 						else //the case where the number of APs is one
 							VADD_Compute_EDD_And_EDD_SD_Based_On_Stochastic_Model(param, Gr, Gr_size, &DEr, &ap_table_for_Gr, 0); //compute the Expected Delivery Delay (EDD) and Expected Delivery Delay Standard Deviation (EDD_SD) based on the stochastic model with graph Gr and directional edge queue DEr.
+							// We will use this DEr value for finding the intersection in trajectory of receiver vehicle to forward a packet.
 					}
 					else
 					{
