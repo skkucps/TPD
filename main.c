@@ -3409,18 +3409,17 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								// Get all intersection on receiver trajectory
 								for(path_ptr = path_list->next; path_ptr != path_list;)								
 								{
-										intersection = atoi(path_ptr->vertex);
-										
-										if (receiver_vehicle->path_ptr == path_ptr)
-										{
-											valid_flag = 1; // flag for valid intersection
-										}
-										
+										intersection = atoi(path_ptr->vertex);										
 										if (valid_flag == 1)
 										{
 											// intersection to calculate link cost from src to dst
-										}
-										
+											// using DEr
+											
+										}										
+										if (receiver_vehicle->path_ptr == path_ptr)
+										{
+											valid_flag = 1; // flag for valid intersection
+										}											
 										path_ptr = path_ptr->next;
 								}
 								
