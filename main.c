@@ -3368,6 +3368,8 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								4.Select the Transmission Path
 								5.Check next carrier at the intersection & forward packet
 								*/
+								
+								// Test
 							}
 							else if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD) //else if-4.2.3.3 
 							{
