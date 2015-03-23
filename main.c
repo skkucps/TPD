@@ -3400,9 +3400,10 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								{
 									exit(1);
 								}
-								struct_path_node *path_ptr = NULL; 
+								struct_path_node *path_list = NULL; 
+								struct_path_node *path_ptr = NULL;
 								
-								path_ptr = receiver_vehicle->path_list;
+								path_list = receiver_vehicle->path_list;
 								int intersection = 0;
 								int valid_flag = 0;
 								// Get all intersection on receiver trajectory
