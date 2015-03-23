@@ -360,6 +360,24 @@ void gnuplot_vehicle_point(double currenttime)
 	}
 }
 
+struct_vehicle* get_vehicle(int vid)
+{ //show the vehicle trajectory along with the arrival time per path node along the vehicle trajectory for all the vehicles in vehicle_list
+
+	struct struct_vehicle *local_vehicle_list = get_vehicle_list();
+	struct struct_vehicle *vehicle = NULL;
+
+	vehicle = local_vehicle_list->next;
+	while(vehicle != local_vehicle_list)
+	{
+		if (vehicle->id == 1)
+			break;
+
+		vehicle = vehicle->next;
+	}
+
+	return vehicle;
+}
+
 /** run simulation */
 
 int main(int argc, char** argv)
@@ -3364,11 +3382,19 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								/* 
 								TODO for TaDB
 								1.Estimate the link delay and transmission cost on each road segment
-								2.Estimate the expected time for the receiver to get to each road segment
+								2.Estimate the expected time for the receiver to get to each intersections of receiver trajectory
 								3.Select the Target Zone ( tp = tv )
 								4.Select the Transmission Path
 								5.Check next carrier at the intersection & forward packet
 								*/
+								
+								//1.Estimate the link delay and transmission cost on each road segment
+								// Already Done in EDD_UDPATE event with function VADD_Compute_EDD_And_EDD_SD_Based_On_Stochastic_Model
+								// We can use DEr
+								
+								//2.Estimate the expected time for the receiver to get to each intersections of receiver trajectory
+								// receiver = vehicle 1
+								
 								
 								// Test
 							}
