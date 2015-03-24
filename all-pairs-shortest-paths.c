@@ -1913,10 +1913,12 @@ double Get_Link_Cost_With_Floyd_Warshall_Get_Shortest_Path(int** M, int n, int s
 		if(j == NIL)
 		{
 			printf("Floyd_Warshall_Get_Shortest_Path(): there is no next hop for current_hop_node(%d) towards src(%d)\n", current_hop_node, src);
-			return;
+			return 0;
 		}
 	}
 	printf("%d\n", j+1);
+	
+	return linkCost;
 }
 
 void Floyd_Warshall_Get_Shortest_Path(int** M, int n, int src, int dst)
