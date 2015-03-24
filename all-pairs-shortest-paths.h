@@ -190,7 +190,7 @@ void Floyd_Warshall_Get_Shortest_Path(int** M, int n, int src, int dst);
 //void Floyd_Warshall_Get_Shortest_Path(int* M, int n, int src, int dst);
 //get the shortest path from src to dst using Floyd_Warshall algorithm
 
-double Get_Link_Cost_With_Floyd_Warshall_Get_Shortest_Path(struct_graph_node *G,int** M, int n, int src, int dst);
+double Get_Link_Cost_With_Floyd_Warshall_Get_Shortest_Path(parameter_t *param,int** M, int n, int src, int dst);
 
 path_queue_t* Floyd_Warshall_Make_Shortest_Path_Queue(int** M, int n, int src, int dst);
 //make a queue containing the shortest path from dst to src using Floyd_Warshall algorithm

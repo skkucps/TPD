@@ -3407,6 +3407,9 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								path_list = receiver_vehicle->path_list;
 								int target_intersection = 0;
 								int valid_flag = 0;
+								
+								double minCost = 99999;
+								int minIntersection;
 								// Get all intersection on receiver trajectory
 								for(path_ptr = path_list->next; path_ptr != path_list;)								
 								{
@@ -3415,13 +3418,12 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 										{
 											// intersection to calculate link cost from src to dst
 											// using DEr
-											Get_Link_Cost_With_Floyd_Warshall_Get_Shortest_Path(
-												Gr,
-												Mr_move,
-												matrix_size_for_movement_in_Gr,
-												25,
-												target_intersection);
-								
+											double tmpCost = param->vanet_table.Dr_edc[25][target_intersection];
+											if (minCost > tmpCost)
+											{
+												minCost = tmpCost;
+												minIntersection = target_intersection;
+											}
 										}										
 										if (receiver_vehicle->path_ptr == path_ptr)
 										{
@@ -3429,8 +3431,11 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 										}											
 										path_ptr = path_ptr->next;
 								}
+								// we get min intersection = target point
+								// 3.Select the Target Zone ( tp = tv )
 								
-								// Test
+								
+								// Finally We want to get Imin & Imax
 							}
 							else if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD) //else if-4.2.3.3 
 							{
