@@ -1866,6 +1866,59 @@ int Floyd_Warshall_Construct_Shortest_PathInfo_For_Hop(int** D, int** M, int n)
 
 ///////////////////////////////////////////////////////////////////
 
+double Get_Link_Cost_With_Floyd_Warshall_Get_Shortest_Path(int** M, int n, int src, int dst)
+{
+	int i, j;
+	int current_hop_node = 0; //current-hop node towards src
+
+	if(src > n || dst > n)
+	{
+		printf("Floyd_Warshall_Get_Shortest_Path(): src(%d) > n(%d) or dst(%d) > n(%d)\n", src, n, dst, n);
+		exit(1);
+	}
+
+	i = src-1; //node i corresponds to index i-1.
+	j = dst-1;
+ 
+	/* get the current-hop node towards src */
+	current_hop_node = j+1;
+
+	/* get the previous node towards src */
+	j = M[i][j];
+	//j = *(M+n*i+j);
+	if(j == NIL)
+	{
+	    //printf("Floyd_Warshall_Get_Shortest_Path(): there is no next hop for dst(%d) towards src(%d)\n", dst, src);
+		return;
+	}
+	else
+	{	/* print the current hop node, that is, dst */
+		printf("%d <- ", current_hop_node);
+	}
+
+	double linkCost = 0;
+	while(j != i)
+	{
+		printf("%d <- ", j+1);		
+		
+		// calculate link cost from current_hop_node to j+1 
+		double tempLinkCost;
+		tempLinkCost = 0; // calculate link cost
+		linkCost += tempLinkCost + (60)/4;
+		
+		current_hop_node = j+1; //current-hop ncode towards src
+		/* get the previous node towards src */
+		j = M[i][j];
+		//j = *(M+n*i+j);
+		if(j == NIL)
+		{
+			printf("Floyd_Warshall_Get_Shortest_Path(): there is no next hop for current_hop_node(%d) towards src(%d)\n", current_hop_node, src);
+			return;
+		}
+	}
+	printf("%d\n", j+1);
+}
+
 void Floyd_Warshall_Get_Shortest_Path(int** M, int n, int src, int dst)
 //void Floyd_Warshall_Get_Shortest_Path(int* M, int n, int src, int dst)
 { //get the shortest path from src to dst using Floyd_Warshall algorithm
@@ -1902,7 +1955,7 @@ void Floyd_Warshall_Get_Shortest_Path(int** M, int n, int src, int dst)
 	while(j != i)
 	{
 		printf("%d <- ", j+1);
-		current_hop_node = j+1; //current-hop node towards src
+		current_hop_node = j+1; //current-hop ncode towards src
 		/* get the previous node towards src */
 		j = M[i][j];
 		//j = *(M+n*i+j);

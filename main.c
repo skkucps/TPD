@@ -3414,8 +3414,8 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 										{
 											// intersection to calculate link cost from src to dst
 											// using DEr
-											Floyd_Warshall_Get_Shortest_Path(
-												Mr_move,
+											Get_Link_Cost_With_Floyd_Warshall_Get_Shortest_Path(
+												Mr_edc,
 												matrix_size_for_movement_in_Gr,
 												25,
 												target_intersection);
