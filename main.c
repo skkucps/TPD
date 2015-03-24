@@ -3404,17 +3404,22 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								struct_path_node *path_ptr = NULL;
 								
 								path_list = receiver_vehicle->path_list;
-								int intersection = 0;
+								int target_intersection = 0;
 								int valid_flag = 0;
 								// Get all intersection on receiver trajectory
 								for(path_ptr = path_list->next; path_ptr != path_list;)								
 								{
-										intersection = atoi(path_ptr->vertex);										
+										target_intersection = atoi(path_ptr->vertex);										
 										if (valid_flag == 1)
 										{
 											// intersection to calculate link cost from src to dst
 											// using DEr
-											
+											Floyd_Warshall_Get_Shortest_Path(
+												Mr_move,
+												matrix_size_for_movement_in_Gr,
+												25,
+												target_intersection);
+								
 										}										
 										if (receiver_vehicle->path_ptr == path_ptr)
 										{
