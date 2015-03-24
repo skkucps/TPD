@@ -2206,8 +2206,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 						if(ap_table_for_Gr.number > 1) //the case where the number of APs is more than 1
 							VADD_Compute_EDD_And_EDD_SD_Based_On_Stochastic_Model_For_Multiple_APs(param, Gr, Gr_size, &DEr, &ap_table_for_Gr); //compute the Expected Delivery Delay (EDD) and Expected Delivery Delay Standard Deviation (EDD_SD) based on the stochastic model with graph Gr and directional edge queue DEr.
 						else //the case where the number of APs is one
-							VADD_Compute_EDD_And_EDD_SD_Based_On_Stochastic_Model(param, Gr, Gr_size, &DEr, &ap_table_for_Gr, 0); //compute the Expected Delivery Delay (EDD) and Expected Delivery Delay Standard Deviation (EDD_SD) based on the stochastic model with graph Gr and directional edge queue DEr.
-							// Jinyong & Taehwan : We will use this DEr value for finding the intersection in trajectory of receiver vehicle to forward a packet. 
+							VADD_Compute_EDD_And_EDD_SD_Based_On_Stochastic_Model(param, Gr, Gr_size, &DEr, &ap_table_for_Gr, 0); //compute the Expected Delivery Delay (EDD) and Expected Delivery Delay Standard Deviation (EDD_SD) based on the stochastic model with graph Gr and directional edge queue DEr.							
 					}
 					else
 					{
@@ -2231,6 +2230,8 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 
 							VADD_Compute_EDC_And_EDC_SD_Based_On_Shortest_Path_Model(param, Gr, Gr_size, &DEr, &ap_table_for_Gr, 0, FALSE); //compute the Expected Delivery Cost (EDC) and Expected Delivery Cost Standard Deviation (EDC_SD) based on the stochastic model with graph Gr and directional edge queue DEr.
 						}
+						
+						// Jinyong & Taehwan : We will use this DEr value for finding the intersection in trajectory of receiver vehicle to forward a packet. 
 					}
 					
 					/** compute EDD and EDD_SD for VADD, TBD, Epidemic Routing so that they can work for the V2V data delivery */
@@ -3415,7 +3416,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 											// intersection to calculate link cost from src to dst
 											// using DEr
 											Get_Link_Cost_With_Floyd_Warshall_Get_Shortest_Path(
-												param,
+												Gr,
 												Mr_move,
 												matrix_size_for_movement_in_Gr,
 												25,

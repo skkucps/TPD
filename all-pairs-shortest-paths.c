@@ -1867,15 +1867,11 @@ int Floyd_Warshall_Construct_Shortest_PathInfo_For_Hop(int** D, int** M, int n)
 ///////////////////////////////////////////////////////////////////
 
 double Get_Link_Cost_With_Floyd_Warshall_Get_Shortest_Path(
-	parameter_t *param,int** M, int n, int src, int dst)
+	struct_graph_node *Gr,int** M, int n, int src, int dst)
 {
 	int i, j;
 	int current_hop_node = 0; //current-hop node towards src
 	
-	double **Dr = param->vanet_table.Dr_edc; //delivery-cost matrix
-	double **Sr = param->vanet_table.Sr_edc; //delivery-cost-variance matrix
-	int Dr_size = param->vanet_table.matrix_size_for_edc_in_Gr; //matrix size
-
 	if(src > n || dst > n)
 	{
 		printf("Floyd_Warshall_Get_Shortest_Path(): src(%d) > n(%d) or dst(%d) > n(%d)\n", src, n, dst, n);
