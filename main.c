@@ -1774,6 +1774,9 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 
 	/* taehwan 20140712 checking range flag */
 	bool isInRange = FALSE;
+	
+	bool flag_min_target_point = false;
+	int minIntersection = 0;
 	/*************************************************************************************************/
 
 	/** @for debugging */
@@ -3395,42 +3398,49 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								
 								//2.Estimate the expected time for the receiver to get to each intersections of receiver trajectory
 								// receiver = vehicle 1
-								struct_vehicle* receiver_vehicle = get_vehicle(1);
-								
-								if (receiver_vehicle == NULL)
+								if(flag_min_target_point == false)
 								{
-									exit(1);
-								}
-								struct_path_node *path_list = NULL; 
-								struct_path_node *path_ptr = NULL;
+									struct_vehicle* receiver_vehicle = get_vehicle(1);
 								
-								path_list = receiver_vehicle->path_list;
-								int target_intersection = 0;
-								int valid_flag = 0;
+									if (receiver_vehicle == NULL)
+									{
+										exit(1);
+									}
+									struct_path_node *path_list = NULL; 
+									struct_path_node *path_ptr = NULL;
 								
-								double minCost = 99999;
-								int minIntersection;
-								// Get all intersection on receiver trajectory
-								for(path_ptr = path_list->next; path_ptr != path_list;)								
-								{
-										target_intersection = atoi(path_ptr->vertex);										
-										if (valid_flag == 1)
-										{
-											// intersection to calculate link cost from src to dst
-											// using DEr
-											double tmpCost = param->vanet_table.Dr_edc[25][target_intersection];
-											if (minCost > tmpCost)
+									path_list = receiver_vehicle->path_list;
+									int target_intersection = 0;
+									int valid_flag = 0;
+								
+									double minCost = 99999;
+									
+									// Get all intersection on receiver trajectory
+									for(path_ptr = path_list->next; path_ptr != path_list;)								
+									{
+											target_intersection = atoi(path_ptr->vertex);										
+											if (valid_flag == 1)
 											{
-												minCost = tmpCost;
-												minIntersection = target_intersection;
-											}
-										}										
-										if (receiver_vehicle->path_ptr == path_ptr)
-										{
-											valid_flag = 1; // flag for valid intersection
-										}											
-										path_ptr = path_ptr->next;
+												// intersection to calculate link cost from src to dst
+												// using DEr
+												double tmpCost = param->vanet_table.Dr_edc[25][target_intersection];
+												if (minCost > tmpCost)
+												{
+													minCost = tmpCost;
+													minIntersection = target_intersection;
+													flag_min_target_point = true;
+												}
+											}										
+											if (receiver_vehicle->path_ptr == path_ptr)
+											{
+												valid_flag = 1; // flag for valid intersection
+											}											
+											path_ptr = path_ptr->next;
+									}
+									
 								}
+								
+								
 								// we get min intersection = target point
 								// 3.Select the Target Zone ( tp = tv )
 								
