@@ -1870,6 +1870,10 @@ double Get_Link_Cost_With_Floyd_Warshall_Get_Shortest_Path(int** M, int n, int s
 {
 	int i, j;
 	int current_hop_node = 0; //current-hop node towards src
+	
+	double **Dr = param->vanet_table.Dr_edc; //delivery-cost matrix
+	double **Sr = param->vanet_table.Sr_edc; //delivery-cost-variance matrix
+	int Dr_size = param->vanet_table.matrix_size_for_edc_in_Gr; //matrix size
 
 	if(src > n || dst > n)
 	{
