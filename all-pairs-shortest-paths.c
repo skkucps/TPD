@@ -1866,7 +1866,8 @@ int Floyd_Warshall_Construct_Shortest_PathInfo_For_Hop(int** D, int** M, int n)
 
 ///////////////////////////////////////////////////////////////////
 
-double Get_Link_Cost_With_Floyd_Warshall_Get_Shortest_Path(int** M, int n, int src, int dst)
+double Get_Link_Cost_With_Floyd_Warshall_Get_Shortest_Path(
+	parameter_t *param,int** M, int n, int src, int dst)
 {
 	int i, j;
 	int current_hop_node = 0; //current-hop node towards src
