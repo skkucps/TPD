@@ -3418,7 +3418,8 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								// Get all intersection on receiver trajectory
 								for(path_ptr = path_list->next; path_ptr != path_list;)								
 								{
-									tmpIntersection = atoi(path_ptr->vertex);										
+									tmpIntersection = atoi(path_ptr->vertex);				
+									printf("%d ",tmpIntersection);
 									if (valid_flag == 1)
 									{
 										// intersection to calculate link cost from src to dst
@@ -3452,6 +3453,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 									}											
 									path_ptr = path_ptr->next;		
 								}
+								printf("\n");
 								// refIntersection
 								// we get ref intersection = target point
 								// minCostExpectedTime
@@ -3467,7 +3469,8 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								
 								for(path_ptr = path_list->next; path_ptr != path_list;)								
 								{
-									tmpIntersection = atoi(path_ptr->vertex);										
+									tmpIntersection = atoi(path_ptr->vertex);		
+									printf("%d ",tmpIntersection);									
 									if (valid_flag == 1)
 									{
 										if (tmpIntersection >= 0)
@@ -3478,8 +3481,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 											
 											int tmpEdgeID = FastGetEdgeID_MoveType(
 												Gr,path_ptr->prev->vertex,path_ptr->vertex, // input arg
-												&tmpType,&tmpLength,&tmpNode); // output arg
-																	
+												&tmpType,&tmpLength,&tmpNode); // output arg																	
 											
 											tmpMinExpectedTime += ( tmpLength / receiver_vehicle->speed ) + maxThinkTime;
 											tmpMaxExpectedTime += ( tmpLength / receiver_vehicle->speed );
@@ -3504,7 +3506,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 									}
 									path_ptr = path_ptr->next;	
 								}
-									
+								printf("\n");	
 								// Finally We want to get Imin & Imax
 								printf("minI = %d (%.2f) refI = %d(%.2f) maxI = %d(%.2f) receiver at %s\n",
 									minIntersection, minExpectedTime,
