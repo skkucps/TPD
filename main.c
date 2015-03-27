@@ -3432,7 +3432,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 											double tmpLength;
 											directional_edge_queue_node_t* tmpNode;
 											int tmpEdgeID;
-											tmpEdgeID = FastGetEdgeID_MoveType(Gr,path_ptr->prev->vertex,target_intersection,
+											tmpEdgeID = FastGetEdgeID_MoveType(Gr,path_ptr->prev->vertex,path_ptr->vertex,
 												&tmpType,&tmpLength,&tmpNode);
 											double maxThinkTime = 100;
 											tmpExpectedTime += ( tmpLength / receiver_vehicle->speed ) + maxThinkTime/4;
