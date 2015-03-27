@@ -3452,29 +3452,23 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 											refIntersection = tmpIntersection;
 											refExpectedTime = tmpRefExpectedTime;
 										}
-										
-										if (refExpectedTime == 0)
+										// get minIntersection  
+										if (refExpectedTime > tmpMinExpectedTime )
 										{
 											minIntersection = tmpIntersection;
-											maxIntersection = tmpIntersection;											
-										} else {
-											// get minIntersection  
-											if (refExpectedTime > tmpMinExpectedTime )
-											{
-												minIntersection = tmpIntersection;
-											}
-											
-											// get maxIntersection
-											if (refExpectedTime > tmpMaxExpectedTime) 
-											{
-												maxIntersection = tmpIntersection;
-											}
-										}							
+										}
 										
+										// get maxIntersection
+										if (refExpectedTime > tmpMaxExpectedTime) 
+										{
+											maxIntersection = tmpIntersection;
+										}										
 									}										
 									if (receiver_vehicle->path_ptr == path_ptr)
 									{
 										valid_flag = 1; // flag for valid intersection
+										minIntersection = tmpIntersection;
+										maxIntersection = tmpIntersection;	
 									}											
 									path_ptr = path_ptr->next;		
 								}
@@ -3482,10 +3476,11 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								// we get ref intersection = target point
 								// minCostExpectedTime
 								// we get expected time for min intersection
-								// 3.Select the Target Zone ( tp = tv )
-								
-								
+								// 3.Select the Target Zone ( tp = tv )								
 								// Finally We want to get Imin & Imax
+								printf("minI = %d, refI = %d, maxI = %d\n",minIntersection, refIntersection, maxIntersection);
+								
+								
 							}
 							else if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD) //else if-4.2.3.3 
 							{
