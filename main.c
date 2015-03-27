@@ -3464,13 +3464,15 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								double minExpectedTime = 0;
 								double maxExpectedTime = 0;
 								int maxIntersection;
-								int minIntersection;	
-								valid_flag = 0;		
+								int minIntersection;
 								
+								minIntersection = atoi(receiver_vehicle->path_ptr->vertex);
+								
+								valid_flag = 0;		
 								for(path_ptr = path_list->next; path_ptr != path_list;)								
 								{
-									tmpIntersection = atoi(path_ptr->vertex);		
-									printf("%d ",tmpIntersection);									
+									tmpIntersection = atoi(path_ptr->vertex);	
+									
 									if (valid_flag == 1)
 									{
 										if (tmpIntersection >= 0)
@@ -3506,7 +3508,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 									}
 									path_ptr = path_ptr->next;	
 								}
-								printf("\n");	
+								
 								// Finally We want to get Imin & Imax
 								printf("minI = %d (%.2f) refI = %d(%.2f) maxI = %d(%.2f) receiver at %s\n",
 									minIntersection, minExpectedTime,
