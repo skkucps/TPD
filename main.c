@@ -1774,6 +1774,9 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 
 	/* taehwan 20140712 checking range flag */
 	bool isInRange = FALSE;
+	
+	bool flag_min_target_point = false;
+	int minIntersection = 0;
 	/*************************************************************************************************/
 
 	/** @for debugging */
@@ -3403,11 +3406,11 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								}
 								struct_path_node *path_list = NULL; 
 								struct_path_node *path_ptr = NULL;
-								
+					
 								path_list = receiver_vehicle->path_list;
 								int target_intersection = 0;
 								int valid_flag = 0;
-								
+									
 								double minCost = 99999;
 								double tmpExpectedTime =0; 
 								double minCostExpectedTime = 0;
@@ -3415,38 +3418,38 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								// Get all intersection on receiver trajectory
 								for(path_ptr = path_list->next; path_ptr != path_list;)								
 								{
-										target_intersection = atoi(path_ptr->vertex);										
-										if (valid_flag == 1)
+									target_intersection = atoi(path_ptr->vertex);										
+									if (valid_flag == 1)
+									{
+										// intersection to calculate link cost from src to dst
+										// using DEr
+										double tmpCost = param->vanet_table.Dr_edc[25][target_intersection];
+										// tail_node , head_node, move_type
+										// calculate expected time Tpi
+										if (path_ptr->prev != NULL)
 										{
-											// intersection to calculate link cost from src to dst
-											// using DEr
-											double tmpCost = param->vanet_table.Dr_edc[25][target_intersection];
-											// tail_node , head_node, move_type
-											// calculate expected time Tpi
-											if (path_ptr->prev != NULL)
-											{
-												MOVE_TYPE tmpType;
-												double tmpLength;
-												directional_edge_queue_node_t* tmpNode;
-												int tmpEdgeID;
-												tmpEdgeID = FastGetEdgeID_MoveType(Gr,path_ptr->prev->vertex,target_intersection,
-													&tmpType,&tmpLength,&tmpNode);
-												double maxThinkTime = 100;
-												tmpExpectedTime += ( tmpLength / receiver_vehicle->speed ) + maxThinkTime/4;
-											}			
-											// calculate minimum intersection
-											if (minCost > tmpCost)
-											{
-												minCost = tmpCost;
-												minIntersection = target_intersection;
-												minCostExpectedTime = tmpExpectedTime;
-											}
-										}										
-										if (receiver_vehicle->path_ptr == path_ptr)
+											MOVE_TYPE tmpType;
+											double tmpLength;
+											directional_edge_queue_node_t* tmpNode;
+											int tmpEdgeID;
+											tmpEdgeID = FastGetEdgeID_MoveType(Gr,path_ptr->prev->vertex,target_intersection,
+												&tmpType,&tmpLength,&tmpNode);
+											double maxThinkTime = 100;
+											tmpExpectedTime += ( tmpLength / receiver_vehicle->speed ) + maxThinkTime/4;
+										}			
+										// calculate minimum intersection
+										if (minCost > tmpCost)
 										{
-											valid_flag = 1; // flag for valid intersection
-										}											
-										path_ptr = path_ptr->next;
+											minCost = tmpCost;
+											minIntersection = target_intersection;
+											minCostExpectedTime = tmpExpectedTime;
+										}
+									}										
+									if (receiver_vehicle->path_ptr == path_ptr)
+									{
+										valid_flag = 1; // flag for valid intersection
+									}											
+									path_ptr = path_ptr->next;		
 								}
 								// minIntersection
 								// we get min intersection = target point
