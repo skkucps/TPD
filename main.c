@@ -3454,18 +3454,20 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 											refIntersection = tmpIntersection;
 											refExpectedTime = tmpRefExpectedTime;
 										}
-										// get minIntersection  
-										if (refExpectedTime > tmpMinExpectedTime )
+										if (tmpIntersection >= 0)
 										{
-											minIntersection = tmpIntersection;
-											minExpectedTime = tmpMinExpectedTime;
-										}
-										
-										// get maxIntersection
-										if (refExpectedTime > tmpMaxExpectedTime) 
-										{
-											maxIntersection = tmpIntersection;
-											maxExpectedTime = tmpMaxExpectedTime;
+											// get minIntersection  
+											if (refExpectedTime > tmpMinExpectedTime )
+											{
+												minIntersection = tmpIntersection;
+												minExpectedTime = tmpMinExpectedTime;
+											}											
+											// get maxIntersection
+											if (refExpectedTime > tmpMaxExpectedTime) 
+											{
+												maxIntersection = tmpIntersection;
+												maxExpectedTime = tmpMaxExpectedTime;
+											}		
 										}										
 									}										
 									if (receiver_vehicle->path_ptr == path_ptr)
@@ -3482,12 +3484,10 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								// we get expected time for min intersection
 								// 3.Select the Target Zone ( tp = tv )								
 								// Finally We want to get Imin & Imax
-								printf("minI = %d (%ld)\nrefI = %d(%ld)\n, maxI = %d(%ld)\n",
+								printf("minI = %d (%f)\nrefI = %d(%f)\nmaxI = %d(%f)\n",
 									minIntersection, minExpectedTime,
 									refIntersection, refExpectedTime,
-									maxIntersection,maxExpectedTime);
-								
-								
+									maxIntersection,maxExpectedTime);			
 							}
 							else if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD) //else if-4.2.3.3 
 							{
