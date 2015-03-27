@@ -3416,6 +3416,8 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								double tmpMinExpectedTime = 0;
 								double tmpMaxExpectedTime = 0;
 								double refExpectedTime = 0;
+								double minExpectedTime = 0;
+								double maxExpectedTime = 0;
 								int refIntersection;
 								int maxIntersection;
 								int minIntersection;
@@ -3456,12 +3458,14 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 										if (refExpectedTime > tmpMinExpectedTime )
 										{
 											minIntersection = tmpIntersection;
+											minExpectedTime = tmpMinExpectedTime;
 										}
 										
 										// get maxIntersection
 										if (refExpectedTime > tmpMaxExpectedTime) 
 										{
 											maxIntersection = tmpIntersection;
+											maxExpectedTime = tmpMaxExpectedTime;
 										}										
 									}										
 									if (receiver_vehicle->path_ptr == path_ptr)
@@ -3478,7 +3482,10 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								// we get expected time for min intersection
 								// 3.Select the Target Zone ( tp = tv )								
 								// Finally We want to get Imin & Imax
-								printf("minI = %d, refI = %d, maxI = %d\n",minIntersection, refIntersection, maxIntersection);
+								printf("minI = %d (%ld)\nrefI = %d(%ld)\n, maxI = %d(%ld)\n",
+									minIntersection, minExpectedTime,
+									refIntersection, refExpectedTime,
+									maxIntersection,maxExpectedTime);
 								
 								
 							}
