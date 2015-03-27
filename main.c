@@ -3413,14 +3413,8 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 									
 								double minCost = 99999;
 								double tmpRefExpectedTime =0; 
-								double tmpMinExpectedTime = 0;
-								double tmpMaxExpectedTime = 0;
 								double refExpectedTime = 0;
-								double minExpectedTime = 0;
-								double maxExpectedTime = 0;
 								int refIntersection;
-								int maxIntersection;
-								int minIntersection;
 								// Get all intersection on receiver trajectory
 								for(path_ptr = path_list->next; path_ptr != path_list;)								
 								{
@@ -3432,7 +3426,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 										double tmpCost = param->vanet_table.Dr_edc[25][tmpIntersection];
 										// tail_node , head_node, move_type
 										// calculate expected time Tpi
-										if (path_ptr->prev != NULL)
+										if (tmpIntersection >= 0)
 										{
 											MOVE_TYPE tmpType;
 											double tmpLength;
@@ -3444,8 +3438,6 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 											double maxThinkTime = 100;
 											
 											tmpRefExpectedTime += ( tmpLength / receiver_vehicle->speed ) + maxThinkTime/4;
-											tmpMinExpectedTime += ( tmpLength / receiver_vehicle->speed ) + maxThinkTime;
-											tmpMaxExpectedTime += ( tmpLength / receiver_vehicle->speed );
 										}			
 										// calculate minimum intersection
 										if (minCost > tmpCost)
@@ -3453,9 +3445,44 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 											minCost = tmpCost;
 											refIntersection = tmpIntersection;
 											refExpectedTime = tmpRefExpectedTime;
-										}
+										}																		
+									}										
+									if (receiver_vehicle->path_ptr == path_ptr)
+									{
+										valid_flag = 1; // flag for valid intersection
+									}											
+									path_ptr = path_ptr->next;		
+								}
+								// refIntersection
+								// we get ref intersection = target point
+								// minCostExpectedTime
+								// we get expected time for min intersection
+								// 3.Select the Target Zone ( tp = tv )		
+								double tmpMinExpectedTime = 0;
+								double tmpMaxExpectedTime = 0;
+								double minExpectedTime = 0;
+								double maxExpectedTime = 0;
+								int maxIntersection;
+								int minIntersection;								
+								for(path_ptr = path_list->next; path_ptr != path_list;)								
+								{
+									tmpIntersection = atoi(path_ptr->vertex);										
+									if (valid_flag == 1)
+									{
 										if (tmpIntersection >= 0)
 										{
+											MOVE_TYPE tmpType;
+											double tmpLength;
+											directional_edge_queue_node_t* tmpNode;
+											
+											int tmpEdgeID = FastGetEdgeID_MoveType(
+												Gr,path_ptr->prev->vertex,path_ptr->vertex, // input arg
+												&tmpType,&tmpLength,&tmpNode); // output arg
+											double maxThinkTime = 100;									
+											
+											tmpMinExpectedTime += ( tmpLength / receiver_vehicle->speed ) + maxThinkTime;
+											tmpMaxExpectedTime += ( tmpLength / receiver_vehicle->speed );
+											
 											// get minIntersection  
 											if (refExpectedTime > tmpMinExpectedTime )
 											{
@@ -3467,22 +3494,16 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 											{
 												maxIntersection = tmpIntersection;
 												maxExpectedTime = tmpMaxExpectedTime;
-											}		
-										}										
-									}										
+											}														
+										}
+									}
 									if (receiver_vehicle->path_ptr == path_ptr)
 									{
 										valid_flag = 1; // flag for valid intersection
-										minIntersection = tmpIntersection;
-										maxIntersection = tmpIntersection;	
-									}											
-									path_ptr = path_ptr->next;		
+									}
+									path_ptr = path_ptr->next;	
 								}
-								// refIntersection
-								// we get ref intersection = target point
-								// minCostExpectedTime
-								// we get expected time for min intersection
-								// 3.Select the Target Zone ( tp = tv )								
+									
 								// Finally We want to get Imin & Imax
 								printf("minI = %d (%.2f) refI = %d(%.2f) maxI = %d(%.2f) receiver at %s\n",
 									minIntersection, minExpectedTime,
