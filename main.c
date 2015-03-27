@@ -3410,7 +3410,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								path_list = receiver_vehicle->path_list;
 								int tmpIntersection = 0;
 								int valid_flag = 0;
-									
+								double maxThinkTime = 100;				
 								double minCost = 99999;
 								double tmpRefExpectedTime =0; 
 								double refExpectedTime = 0;
@@ -3435,7 +3435,6 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 											int tmpEdgeID = FastGetEdgeID_MoveType(
 												Gr,path_ptr->prev->vertex,path_ptr->vertex, // input arg
 												&tmpType,&tmpLength,&tmpNode); // output arg
-											double maxThinkTime = 100;
 											
 											tmpRefExpectedTime += ( tmpLength / receiver_vehicle->speed ) + maxThinkTime/4;
 										}			
@@ -3463,7 +3462,9 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								double minExpectedTime = 0;
 								double maxExpectedTime = 0;
 								int maxIntersection;
-								int minIntersection;								
+								int minIntersection;	
+								valid_flag = 0;		
+								
 								for(path_ptr = path_list->next; path_ptr != path_list;)								
 								{
 									tmpIntersection = atoi(path_ptr->vertex);										
@@ -3478,7 +3479,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 											int tmpEdgeID = FastGetEdgeID_MoveType(
 												Gr,path_ptr->prev->vertex,path_ptr->vertex, // input arg
 												&tmpType,&tmpLength,&tmpNode); // output arg
-											double maxThinkTime = 100;									
+																	
 											
 											tmpMinExpectedTime += ( tmpLength / receiver_vehicle->speed ) + maxThinkTime;
 											tmpMaxExpectedTime += ( tmpLength / receiver_vehicle->speed );
