@@ -3409,6 +3409,8 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								int valid_flag = 0;
 								
 								double minCost = 99999;
+								double tmpExpectedTime =0; 
+								double minCostExpectedTime = 0;
 								int minIntersection;
 								// Get all intersection on receiver trajectory
 								for(path_ptr = path_list->next; path_ptr != path_list;)								
@@ -3419,10 +3421,25 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 											// intersection to calculate link cost from src to dst
 											// using DEr
 											double tmpCost = param->vanet_table.Dr_edc[25][target_intersection];
+											// tail_node , head_node, move_type
+											// calculate expected time Tpi
+											if (path_ptr->prev != NULL)
+											{
+												MOVE_TYPE tmpType;
+												double tmpLength;
+												directional_edge_queue_node_t* tmpNode;
+												int tmpEdgeID;
+												tmpEdgeID = FastGetEdgeID_MoveType(Gr,path_ptr->prev->vertex,target_intersection,
+													&tmpType,&tmpLength,&tmpNode);
+												double maxThinkTime = 100;
+												tmpExpectedTime += ( tmpLength / receiver_vehicle->speed ) + maxThinkTime/4;
+											}			
+											// calculate minimum intersection
 											if (minCost > tmpCost)
 											{
 												minCost = tmpCost;
 												minIntersection = target_intersection;
+												minCostExpectedTime = tmpExpectedTime;
 											}
 										}										
 										if (receiver_vehicle->path_ptr == path_ptr)
@@ -3431,7 +3448,10 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 										}											
 										path_ptr = path_ptr->next;
 								}
+								// minIntersection
 								// we get min intersection = target point
+								// minCostExpectedTime
+								// we get expected time for min intersection
 								// 3.Select the Target Zone ( tp = tv )
 								
 								
