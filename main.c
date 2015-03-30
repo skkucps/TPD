@@ -3416,7 +3416,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								double refExpectedTime = 0;
 								int refIntersection;
 								int target_zone[INTERSECTION_COUNT];
-								int target_zone_intersection_count;
+								int target_zone_intersection_count = 0;
 								// Get all intersection on receiver trajectory
 								for(path_ptr = path_list->next; path_ptr != path_list;)								
 								{
