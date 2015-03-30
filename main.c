@@ -3411,10 +3411,12 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								int tmpIntersection = 0;
 								int valid_flag = 0;
 								double maxThinkTime = 100;				
-								double minCost = 99999;
+								double minCost = 99999;								
 								double tmpRefExpectedTime =0; 
 								double refExpectedTime = 0;
 								int refIntersection;
+								int target_zone[INTERSECTION_COUNT];
+								int target_zone_intersection_count;
 								// Get all intersection on receiver trajectory
 								for(path_ptr = path_list->next; path_ptr != path_list;)								
 								{
@@ -3509,12 +3511,34 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 									path_ptr = path_ptr->next;	
 								}
 								
-								// Finally We want to get Imin & Imax
-								printf("minI = %d (%.2f) refI = %d(%.2f) maxI = %d(%.2f) receiver at %s\n",
-									minIntersection, minExpectedTime,
-									refIntersection, refExpectedTime,
-									maxIntersection,maxExpectedTime,
-									receiver_vehicle->path_ptr->vertex);			
+								// get target zone
+								valid_flag = 0;		
+								for(path_ptr = path_list->next; path_ptr != path_list;)								
+								{
+									tmpIntersection = atoi(path_ptr->vertex);	
+									
+									if (tmpIntersection == minIntersection)
+									{
+										valid_flag = 1;
+									}
+									
+									if (valid_flag == 1)
+									{
+										target_zone[target_zone_intersection_count++] = tmpIntersection;
+									}
+									
+									if (tmpIntersection == maxIntersection)
+									{
+										break;
+									}
+								}
+								
+								int target_zone_index;
+								for(target_zone_index=0;target_zone_index<target_zone_intersection_count;target_zone_index++)
+								{
+									printf("->%d", target_zone[target_zone_index]);
+								}
+								printf("\n");
 							}
 							else if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD) //else if-4.2.3.3 
 							{
