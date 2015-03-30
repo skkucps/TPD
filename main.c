@@ -3535,7 +3535,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								}
 								
 								int target_zone_index;
-								printf("current receiver at %s. ",receiver_vehicle->path_ptr->vertex);
+								printf("The current receiver at %s. The intersections of the target zone are ",receiver_vehicle->path_ptr->vertex);
 								for(target_zone_index=0;target_zone_index<target_zone_intersection_count;target_zone_index++)
 								{
 									printf("%d ", target_zone[target_zone_index]);
