@@ -3538,7 +3538,9 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								printf("current receiver at %s. ",receiver_vehicle->path_ptr->vertex);
 								for(target_zone_index=0;target_zone_index<target_zone_intersection_count;target_zone_index++)
 								{
-									printf("%d ->", target_zone[target_zone_index]);
+									printf("%d ", target_zone[target_zone_index]);
+									if (target_zone_index<target_zone_intersection_count-1)
+										printf(",");
 								}
 								printf("\n");
 							}
