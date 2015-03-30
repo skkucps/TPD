@@ -3531,6 +3531,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 									{
 										break;
 									}
+									path_ptr = path_ptr->next;	
 								}
 								
 								int target_zone_index;
