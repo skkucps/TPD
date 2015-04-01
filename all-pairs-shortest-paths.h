@@ -189,6 +189,7 @@ int Floyd_Warshall_Construct_Shortest_PathInfo_For_Hop(int** D, int** M, int n);
 void Floyd_Warshall_Get_Shortest_Path(int** M, int n, int src, int dst);
 //void Floyd_Warshall_Get_Shortest_Path(int* M, int n, int src, int dst);
 //get the shortest path from src to dst using Floyd_Warshall algorithm
+void Floyd_Warshall_Set_Shortest_Path(int** M, int n, int src, int dst, struct_path_node* path_list);
 
 double Get_Link_Cost_With_Floyd_Warshall_Get_Shortest_Path(parameter_t *param,int** M, int n, int src, int dst);
 

@@ -1941,7 +1941,7 @@ void Floyd_Warshall_Get_Shortest_Path(int** M, int n, int src, int dst)
  
 	/* get the current-hop node towards src */
 	current_hop_node = j+1;
-
+	
 	/* get the previous node towards src */
 	j = M[i][j];
 	//j = *(M+n*i+j);
@@ -1971,6 +1971,73 @@ void Floyd_Warshall_Get_Shortest_Path(int** M, int n, int src, int dst)
 	printf("%d\n", j+1);
 }
 
+void Floyd_Warshall_Set_Shortest_Path(int** M, int n, int src, int dst, struct_path_node* path_list)
+//void Floyd_Warshall_Get_Shortest_Path(int* M, int n, int src, int dst)
+{ //get the shortest path from src to dst using Floyd_Warshall algorithm
+  //input:= M: predecessor matrix, n: number of nodes , src: source node, dst: destination node
+ 
+	int i, j;
+	int current_hop_node = 0; //current-hop node towards src
+	int tmp_path[100];
+	int tmp_path_count = 0;
+	struct_path_node* tmp_path_node = NULL;
+
+	if(src > n || dst > n)
+	{
+		printf("Floyd_Warshall_Get_Shortest_Path(): src(%d) > n(%d) or dst(%d) > n(%d)\n", src, n, dst, n);
+		exit(1);
+	}
+
+	i = src-1; //node i corresponds to index i-1.
+	j = dst-1;
+ 
+	/* get the current-hop node towards src */
+	current_hop_node = j+1;
+
+	/* get the previous node towards src */
+	j = M[i][j];
+	//j = *(M+n*i+j);
+	if(j == NIL)
+	{
+	    //printf("Floyd_Warshall_Get_Shortest_Path(): there is no next hop for dst(%d) towards src(%d)\n", dst, src);
+		return;
+	}
+	else
+	{	/* print the current hop node, that is, dst */
+		printf("%d <- ", current_hop_node);
+		tmp_path[tmp_path_count] = current_hop_node;
+		tmp_path_count++;
+	}
+
+	while(j != i)
+	{
+		printf("%d <- ", j+1);
+		current_hop_node = j+1; //current-hop ncode towards src
+		tmp_path[tmp_path_count] = current_hop_node;
+		tmp_path_count++;
+		/* get the previous node towards src */
+		j = M[i][j];
+		//j = *(M+n*i+j);
+		if(j == NIL)
+		{
+			printf("Floyd_Warshall_Get_Shortest_Path(): there is no next hop for current_hop_node(%d) towards src(%d)\n", current_hop_node, src);
+			return;
+		}
+	}
+	printf("%d\n", j+1);
+	tmp_path[tmp_path_count] = j+1;
+	tmp_path_count++;
+	for(int i = 0; i < tmp_path_count ; i++)
+	{
+		tmp_path_node = (struct_path_node*) calloc(1, sizeof(struct_path_node));
+		assert_memory(tmp_path_node);	
+		itoa(tmp_path[i],tmp_path_node->vertex);
+		tmp_path_node->next = path_list->next;
+		path_list->next->prev = tmp_path_node;
+		path_list->next = tmp_path_node;
+		tmp_path_node->prev = path_list;
+	}
+}
 path_queue_t* Floyd_Warshall_Make_Shortest_Path_Queue(int** M, int n, int src, int dst)
 { //make a queue containing the shortest path from dst to src using Floyd_Warshall algorithm
   //input:= M: predecessor matrix, n: number of nodes , src: source node, dst: destination node

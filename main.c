@@ -3406,7 +3406,10 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								}
 								struct_path_node *path_list = NULL; 
 								struct_path_node *path_ptr = NULL;
-					
+								struct_path_node *path_packet_list[INTERSECTION_COUNT];					
+								struct_set_node *tmp_path_list = NULL;
+								for(int i=0; i<INTERSECTION_COUNT; i++)								
+									path_packet_list[i] = Path_List_Init();					
 								path_list = receiver_vehicle->path_list;
 								int tmpIntersection = 0;
 								int valid_flag = 0;
@@ -3416,7 +3419,10 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								double refExpectedTime = 0;
 								int refIntersection;
 								int target_zone[INTERSECTION_COUNT];
+								for(int i=0; i<INTERSECTION_COUNT; i++)
+									target_zone[i] = 0;
 								int target_zone_intersection_count = 0;
+								char ap_sender[20] = "25";
 								// Get all intersection on receiver trajectory
 								for(path_ptr = path_list->next; path_ptr != path_list;)								
 								{
@@ -3426,7 +3432,7 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 									{
 										// intersection to calculate link cost from src to dst
 										// using DEr
-										double tmpCost = param->vanet_table.Dr_edc[25][tmpIntersection];
+										double tmpCost = param->vanet_table.Dr_edc[24][tmpIntersection];
 										// tail_node , head_node, move_type
 										// calculate expected time Tpi
 										if (tmpIntersection >= 0)
@@ -3543,6 +3549,29 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 										printf(",");
 								}
 								printf("\n");
+
+								/////////////////////////////// shortest path of packet	to target_zone /////////////////////
+								//	4.Select the Transmission Path
+								for(int i=0; i<target_zone_intersection_count; i++)
+								{
+									Floyd_Warshall_Set_Shortest_Path(param->vanet_table.Mr_edd, 49, 25, target_zone[i],path_packet_list[i]);
+								}
+								
+	
+								// 	5.Check next carrier at the intersection & forward packet
+#if 1 /* [ */
+									target_point_id = GetTargetPoint_For_AP_For_V2V_Data_Delivery(param, current_time, pAP->vertex, pDestinationVehicleQueueNode->vnode, &FTQ, Gr_set_number, Gr_set, Gr_set_size, &EDD_p, &EAD_p);
+
+									/* set AP's target point to target_point_id again */
+									pAP->target_point_id = target_point_id;
+									printf("target_point_id : %d\n",pAP->target_point_id);
+#endif /* ] */
+									EPIDEMIC_Perform_Packet_Dissemination_At_Intersection_For_AP(param, current_time, pAP, Gr_set[pAP->target_point_id-1], Gr_set_size[pAP->target_point_id-1], &packet_delivery_statistics);
+
+
+
+
+
 							}
 							else if(param->vanet_forwarding_scheme == VANET_FORWARDING_VADD || param->vanet_forwarding_scheme == VANET_FORWARDING_TBD) //else if-4.2.3.3 
 							{
