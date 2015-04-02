@@ -24,6 +24,7 @@
 #include "tpd.h"
 #include "epidemic.h"
 #include "steiner-tree.h"
+#include "tadb.h"
 
 #include <time.h>
 
@@ -3398,157 +3399,23 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								
 								//2.Estimate the expected time for the receiver to get to each intersections of receiver trajectory
 								// receiver = vehicle 1
-								struct_vehicle* receiver_vehicle = get_vehicle(1);
-								
-								if (receiver_vehicle == NULL)
-								{
-									exit(1);
-								}
-								struct_path_node *path_list = NULL; 
-								struct_path_node *path_ptr = NULL;
-								struct_path_node *path_packet_list[INTERSECTION_COUNT];					
-								struct_set_node *tmp_path_list = NULL;
+								struct_vehicle* receiver_vehicle = get_vehicle(1);	
+								struct_path_node *path_packet_list[INTERSECTION_COUNT];						
 								for(int i=0; i<INTERSECTION_COUNT; i++)								
-									path_packet_list[i] = Path_List_Init();					
-								path_list = receiver_vehicle->path_list;
-								int tmpIntersection = 0;
-								int valid_flag = 0;
-								double maxThinkTime = 100;				
-								double minCost = 99999;								
-								double tmpRefExpectedTime =0; 
-								double refExpectedTime = 0;
-								int refIntersection;
+									path_packet_list[i] = Path_List_Init();	
+							
 								int target_zone[INTERSECTION_COUNT];
 								for(int i=0; i<INTERSECTION_COUNT; i++)
 									target_zone[i] = 0;
 								int target_zone_intersection_count = 0;
-								char ap_sender[20] = "25";
-								// Get all intersection on receiver trajectory
-								for(path_ptr = path_list->next; path_ptr != path_list;)								
+
+								if (receiver_vehicle == NULL)
 								{
-									tmpIntersection = atoi(path_ptr->vertex);				
-									printf("%d ",tmpIntersection);
-									if (valid_flag == 1)
-									{
-										// intersection to calculate link cost from src to dst
-										// using DEr
-										double tmpCost = param->vanet_table.Dr_edc[24][tmpIntersection];
-										// tail_node , head_node, move_type
-										// calculate expected time Tpi
-										if (tmpIntersection >= 0)
-										{
-											MOVE_TYPE tmpType;
-											double tmpLength;
-											directional_edge_queue_node_t* tmpNode;
-											
-											int tmpEdgeID = FastGetEdgeID_MoveType(
-												Gr,path_ptr->prev->vertex,path_ptr->vertex, // input arg
-												&tmpType,&tmpLength,&tmpNode); // output arg
-											
-											tmpRefExpectedTime += ( tmpLength / receiver_vehicle->speed ) + maxThinkTime/4;
-										}			
-										// calculate minimum intersection
-										if (minCost > tmpCost)
-										{
-											minCost = tmpCost;
-											refIntersection = tmpIntersection;
-											refExpectedTime = tmpRefExpectedTime;
-										}																		
-									}										
-									if (receiver_vehicle->path_ptr == path_ptr)
-									{
-										valid_flag = 1; // flag for valid intersection
-									}											
-									path_ptr = path_ptr->next;		
+									exit(1);
 								}
-								printf("\n");
-								// refIntersection
-								// we get ref intersection = target point
-								// minCostExpectedTime
-								// we get expected time for min intersection
-								// 3.Select the Target Zone ( tp = tv )		
-								double tmpMinExpectedTime = 0;
-								double tmpMaxExpectedTime = 0;
-								double minExpectedTime = 0;
-								double maxExpectedTime = 0;
-								int maxIntersection;
-								int minIntersection;
-								
-								minIntersection = atoi(receiver_vehicle->path_ptr->vertex);
-								
-								valid_flag = 0;		
-								for(path_ptr = path_list->next; path_ptr != path_list;)								
-								{
-									tmpIntersection = atoi(path_ptr->vertex);	
-									
-									if (valid_flag == 1)
-									{
-										if (tmpIntersection >= 0)
-										{
-											MOVE_TYPE tmpType;
-											double tmpLength;
-											directional_edge_queue_node_t* tmpNode;
-											
-											int tmpEdgeID = FastGetEdgeID_MoveType(
-												Gr,path_ptr->prev->vertex,path_ptr->vertex, // input arg
-												&tmpType,&tmpLength,&tmpNode); // output arg																	
-											
-											tmpMinExpectedTime += ( tmpLength / receiver_vehicle->speed ) + maxThinkTime;
-											tmpMaxExpectedTime += ( tmpLength / receiver_vehicle->speed );
-											
-											// get minIntersection  
-											if (refExpectedTime > tmpMinExpectedTime )
-											{
-												minIntersection = tmpIntersection;
-												minExpectedTime = tmpMinExpectedTime;
-											}											
-											// get maxIntersection
-											if (refExpectedTime > tmpMaxExpectedTime) 
-											{
-												maxIntersection = tmpIntersection;
-												maxExpectedTime = tmpMaxExpectedTime;
-											}														
-										}
-									}
-									if (receiver_vehicle->path_ptr == path_ptr)
-									{
-										valid_flag = 1; // flag for valid intersection
-									}
-									path_ptr = path_ptr->next;	
-								}
-								
-								// get target zone
-								valid_flag = 0;		
-								for(path_ptr = path_list->next; path_ptr != path_list;)								
-								{
-									tmpIntersection = atoi(path_ptr->vertex);	
-									
-									if (tmpIntersection == minIntersection)
-									{
-										valid_flag = 1;
-									}
-									
-									if (valid_flag == 1)
-									{
-										target_zone[target_zone_intersection_count++] = tmpIntersection;
-									}
-									
-									if (tmpIntersection == maxIntersection)
-									{
-										break;
-									}
-									path_ptr = path_ptr->next;	
-								}
-								
-								int target_zone_index;
-								printf("The current receiver at %s. The intersections of the target zone are ",receiver_vehicle->path_ptr->vertex);
-								for(target_zone_index=0;target_zone_index<target_zone_intersection_count;target_zone_index++)
-								{
-									printf("%d ", target_zone[target_zone_index]);
-									if (target_zone_index<target_zone_intersection_count-1)
-										printf(",");
-								}
-								printf("\n");
+								double refExpectedTime = 0;								
+
+								target_zone_intersection_count =  TADB_Get_RefTime_And_Target_Zone(param, Gr, receiver_vehicle, target_zone, &refExpectedTime);
 
 								/////////////////////////////// shortest path of packet	to target_zone /////////////////////
 								//	4.Select the Transmission Path
@@ -3556,17 +3423,17 @@ int run(unsigned int seed, struct parameter *param, char *graph_file, char *sche
 								{
 									Floyd_Warshall_Set_Shortest_Path(param->vanet_table.Mr_edd, 49, 25, target_zone[i],path_packet_list[i]);
 								}
-								
+								printf("vehicle id : %d\n",vehicle->id);
 	
 								// 	5.Check next carrier at the intersection & forward packet
 #if 1 /* [ */
-									target_point_id = GetTargetPoint_For_AP_For_V2V_Data_Delivery(param, current_time, pAP->vertex, pDestinationVehicleQueueNode->vnode, &FTQ, Gr_set_number, Gr_set, Gr_set_size, &EDD_p, &EAD_p);
+								//	target_point_id = GetTargetPoint_For_AP_For_V2V_Data_Delivery(param, current_time, pAP->vertex, pDestinationVehicleQueueNode->vnode, &FTQ, Gr_set_number, Gr_set, Gr_set_size, &EDD_p, &EAD_p);
 
 									/* set AP's target point to target_point_id again */
-									pAP->target_point_id = target_point_id;
-									printf("target_point_id : %d\n",pAP->target_point_id);
+								//	pAP->target_point_id = target_point_id;
+								//	printf("target_point_id : %d\n",pAP->target_point_id);
 #endif /* ] */
-									EPIDEMIC_Perform_Packet_Dissemination_At_Intersection_For_AP(param, current_time, pAP, Gr_set[pAP->target_point_id-1], Gr_set_size[pAP->target_point_id-1], &packet_delivery_statistics);
+								//	EPIDEMIC_Perform_Packet_Dissemination_At_Intersection_For_AP(param, current_time, pAP, Gr_set[pAP->target_point_id-1], Gr_set_size[pAP->target_point_id-1], &packet_delivery_statistics);
 
 
 
